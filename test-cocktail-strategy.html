@@ -1,0 +1,913 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Stratégie de tests — CocktailApp</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Syne:wght@400;700;800&display=swap');
+
+  :root {
+    --bg: #0a0e1a;
+    --surface: #111827;
+    --border: #1e2d40;
+    --unit: #22d3ee;
+    --integration: #34d399;
+    --e2e: #f472b6;
+    --smoke: #fb923c;
+    --stress: #f87171;
+    --nrt: #fbbf24;
+    --text: #e2e8f0;
+    --muted: #64748b;
+    --code-bg: #060d1a;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Syne', sans-serif;
+    min-height: 100vh;
+    padding: 40px 20px 100px;
+    overflow-x: hidden;
+  }
+
+  body::before {
+    content: '';
+    position: fixed; top: -50%; left: -50%;
+    width: 200%; height: 200%;
+    background:
+      radial-gradient(ellipse at 20% 20%, rgba(34,211,238,0.05) 0%, transparent 50%),
+      radial-gradient(ellipse at 80% 80%, rgba(244,114,182,0.04) 0%, transparent 50%);
+    pointer-events: none; z-index: 0;
+  }
+
+  .container { max-width: 1060px; margin: 0 auto; position: relative; z-index: 1; }
+
+  /* ── HEADER ── */
+  header { text-align: center; margin-bottom: 52px; animation: fadeDown .6s ease both; }
+
+  .app-tag {
+    display: inline-flex; align-items: center; gap: 8px;
+    font-family: 'JetBrains Mono', monospace; font-size: 0.68rem;
+    color: var(--muted); border: 1px solid var(--border);
+    padding: 5px 16px; border-radius: 20px; margin-bottom: 18px;
+    letter-spacing: 0.1em;
+  }
+  .app-tag em { color: var(--smoke); font-style: normal; }
+
+  h1 {
+    font-size: clamp(1.8rem, 4vw, 2.8rem); font-weight: 800;
+    letter-spacing: -0.02em; line-height: 1.1; margin-bottom: 10px;
+    background: linear-gradient(135deg, var(--unit) 0%, var(--e2e) 100%);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+  }
+
+  header p { color: var(--muted); font-size: 0.82rem; font-family: 'JetBrains Mono', monospace; }
+
+  /* ── STACK ── */
+  .stack { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 48px; animation: fadeUp .5s ease .1s both; }
+
+  .stack-card {
+    border-radius: 10px; padding: 16px 18px;
+    border: 1px solid var(--border); background: var(--surface);
+    display: flex; align-items: flex-start; gap: 12px;
+  }
+
+  .stack-icon { font-size: 1.4rem; flex-shrink: 0; margin-top: 2px; }
+  .stack-name { font-size: 0.9rem; font-weight: 700; margin-bottom: 5px; }
+  .stack-detail {
+    font-family: 'JetBrains Mono', monospace; font-size: 0.7rem;
+    color: var(--muted); line-height: 1.6;
+  }
+  .stack-detail strong { color: #94a3b8; }
+
+  /* ── SECTION LABEL ── */
+  .slabel {
+    font-family: 'JetBrains Mono', monospace; font-size: 0.63rem;
+    color: var(--muted); text-transform: uppercase; letter-spacing: 0.15em;
+    margin-bottom: 12px;
+  }
+
+  /* ── LAYER ── */
+  .layer { margin-bottom: 10px; }
+
+  .layer-header {
+    display: flex; align-items: center; gap: 12px;
+    padding: 13px 20px; border-radius: 10px 10px 0 0;
+    border: 1px solid; border-bottom: none;
+    cursor: pointer; user-select: none; transition: filter .2s;
+  }
+  .layer-header:hover { filter: brightness(1.12); }
+
+  .layer-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+  .layer-title { font-size: 0.95rem; font-weight: 700; }
+  .layer-subtitle {
+    font-family: 'JetBrains Mono', monospace; font-size: 0.67rem;
+    margin-left: auto; color: var(--muted); white-space: nowrap;
+  }
+  .layer-arrow { font-size: 0.75rem; color: var(--muted); margin-left: 8px; transition: transform .3s; }
+  .layer.open .layer-arrow { transform: rotate(180deg); }
+
+  .layer-body {
+    border: 1px solid; border-top: none; border-radius: 0 0 10px 10px;
+    overflow: hidden; max-height: 0; transition: max-height .45s ease;
+  }
+  .layer.open .layer-body { max-height: 3000px; }
+
+  .layer-inner { padding: 18px; display: flex; flex-direction: column; gap: 12px; }
+
+  /* layer colors */
+  .l-unit        { --c: var(--unit);        border-color: rgba(34,211,238,0.3);  background: rgba(34,211,238,0.06); }
+  .l-integration { --c: var(--integration); border-color: rgba(52,211,153,0.3);  background: rgba(52,211,153,0.06); }
+  .l-e2e         { --c: var(--e2e);         border-color: rgba(244,114,182,0.3); background: rgba(244,114,182,0.06); }
+  .l-smoke       { --c: var(--smoke);       border-color: rgba(251,146,60,0.3);  background: rgba(251,146,60,0.06); }
+  .l-stress      { --c: var(--stress);      border-color: rgba(248,113,113,0.3); background: rgba(248,113,113,0.06); }
+
+  /* ── CARDS ── */
+  .grid { display: grid; gap: 10px; }
+  .g2 { grid-template-columns: 1fr 1fr; }
+  .g3 { grid-template-columns: 1fr 1fr 1fr; }
+
+  .card {
+    border-radius: 9px; padding: 15px 17px;
+    border: 1px solid rgba(255,255,255,0.07);
+    background: var(--code-bg);
+    position: relative; overflow: hidden;
+  }
+  .card::before {
+    content: ''; position: absolute; top: 0; left: 0;
+    width: 3px; height: 100%; background: var(--c, #fff);
+  }
+
+  .card-head {
+    font-size: 0.6rem; font-family: 'JetBrains Mono', monospace;
+    text-transform: uppercase; letter-spacing: 0.12em;
+    color: var(--c, var(--muted)); margin-bottom: 9px; opacity: .85;
+  }
+
+  .card-note {
+    font-family: 'JetBrains Mono', monospace; font-size: 0.74rem;
+    color: #94a3b8; line-height: 1.65; margin-bottom: 8px;
+  }
+
+  ul.clist { list-style: none; display: flex; flex-direction: column; gap: 4px; }
+  ul.clist li {
+    font-family: 'JetBrains Mono', monospace; font-size: 0.74rem;
+    color: #94a3b8; padding-left: 16px; position: relative; line-height: 1.5;
+  }
+  ul.clist li::before { content: '→'; position: absolute; left: 0; color: var(--c, var(--muted)); opacity: .55; }
+  ul.clist li.ok::before  { content: '✅'; opacity: 1; }
+  ul.clist li.err::before { content: '❌'; opacity: 1; }
+  ul.clist li.warn::before{ content: '⚠️'; opacity: 1; }
+  ul.clist li.ci::before  { content: '🔁'; opacity: 1; }
+
+  /* sub-label inside layer */
+  .sublabel {
+    font-family: 'JetBrains Mono', monospace; font-size: 0.62rem;
+    color: var(--c); text-transform: uppercase; letter-spacing: .12em;
+    opacity: .8;
+  }
+
+  /* ownership highlight */
+  .ownership {
+    border-radius: 9px; padding: 14px 16px;
+    border: 1px solid rgba(167,139,250,0.35);
+    background: rgba(167,139,250,0.05);
+    position: relative; overflow: hidden;
+  }
+  .ownership::before {
+    content: ''; position: absolute; top: 0; left: 0;
+    width: 3px; height: 100%; background: #a78bfa;
+  }
+  .ownership-title {
+    font-size: 0.62rem; font-family: 'JetBrains Mono', monospace;
+    text-transform: uppercase; letter-spacing: .12em;
+    color: #a78bfa; margin-bottom: 9px; opacity: .85;
+  }
+
+  /* ── CODE BLOCK ── */
+  .code-block { border-radius: 9px; background: var(--code-bg); border: 1px solid var(--border); overflow: hidden; }
+  .code-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 7px 13px; background: rgba(255,255,255,0.02); border-bottom: 1px solid var(--border);
+  }
+  .code-lang { font-family: 'JetBrains Mono', monospace; font-size: 0.6rem; color: var(--muted); letter-spacing: .1em; }
+  .dots { display: flex; gap: 4px; }
+  .dot  { width: 8px; height: 8px; border-radius: 50%; background: rgba(255,255,255,0.1); }
+  .code-body { padding: 15px; overflow-x: auto; }
+  pre { font-family: 'JetBrains Mono', monospace; font-size: 0.73rem; line-height: 1.75; color: #cbd5e1; white-space: pre; }
+  .kw  { color: #f472b6; }
+  .fn  { color: #60a5fa; }
+  .str { color: #86efac; }
+  .cm  { color: #475569; font-style: italic; }
+  .num { color: #fb923c; }
+
+  /* ── CONCEPTS ── */
+  .concepts { display: flex; flex-wrap: wrap; gap: 6px; padding: 0 18px 18px; }
+  .concept {
+    font-family: 'JetBrains Mono', monospace; font-size: 0.66rem;
+    padding: 4px 10px; border-radius: 5px; border: 1px solid;
+    background: rgba(255,255,255,0.02);
+  }
+
+  /* ── NRT BANNER ── */
+  .nrt-banner {
+    margin-top: 30px;
+    border: 1px dashed rgba(251,191,36,0.4); border-radius: 12px;
+    background: rgba(251,191,36,0.04); padding: 20px 24px;
+    animation: fadeUp .5s ease .6s both;
+  }
+
+  .nrt-top { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; }
+  .nrt-title { font-size: 0.9rem; font-weight: 700; color: var(--nrt); }
+  .nrt-badge {
+    margin-left: auto;
+    font-family: 'JetBrains Mono', monospace; font-size: 0.58rem; letter-spacing: .15em;
+    padding: 3px 8px; border-radius: 4px; border: 1px solid rgba(251,191,36,0.3);
+    color: var(--nrt); background: rgba(251,191,36,0.08);
+  }
+
+  .nrt-pipeline {
+    display: flex; align-items: stretch; gap: 0;
+    background: var(--code-bg); border: 1px solid var(--border);
+    border-radius: 9px; overflow: hidden; margin-bottom: 14px;
+  }
+
+  .nrt-step {
+    flex: 1; padding: 12px 8px; text-align: center;
+    font-family: 'JetBrains Mono', monospace; font-size: 0.66rem;
+    line-height: 1.5; border-right: 1px solid var(--border);
+    display: flex; flex-direction: column; align-items: center; gap: 5px;
+  }
+  .nrt-step:last-child { border-right: none; }
+  .nrt-step .nrt-icon { font-size: 1.1rem; }
+  .nrt-step .nrt-name { font-weight: 700; }
+  .nrt-step .nrt-tool { color: var(--muted); font-size: 0.6rem; }
+  .nrt-step .nrt-trigger { font-size: 0.58rem; color: var(--muted); margin-top: 2px; }
+
+  .nrt-note {
+    font-family: 'JetBrains Mono', monospace; font-size: 0.73rem;
+    color: #64748b; line-height: 1.65;
+  }
+  .nrt-note strong { color: var(--nrt); }
+
+  /* ── ANIM ── */
+  @keyframes fadeDown { from { opacity:0; transform:translateY(-16px); } to { opacity:1; transform:translateY(0); } }
+  @keyframes fadeUp   { from { opacity:0; transform:translateY(18px);  } to { opacity:1; transform:translateY(0); } }
+
+  @media (max-width: 640px) {
+    .stack, .g2, .g3 { grid-template-columns: 1fr; }
+    .layer-subtitle { display: none; }
+    .nrt-pipeline { flex-direction: column; }
+    .nrt-step { border-right: none; border-bottom: 1px solid var(--border); }
+    .nrt-step:last-child { border-bottom: none; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <!-- HEADER -->
+  <header>
+    <div class="app-tag">🍹 <em>CocktailApp</em> &nbsp;·&nbsp; React + Express &nbsp;·&nbsp; stratégie de tests</div>
+    <h1>Plan de tests</h1>
+    <p>// unitaire · intégration · E2E · charge · CI/CD</p>
+  </header>
+
+  <!-- STACK -->
+  <div class="slabel">// architecture</div>
+  <div class="stack" style="animation: fadeUp .5s ease .05s both">
+    <div class="stack-card">
+      <div class="stack-icon">⚛️</div>
+      <div>
+        <div class="stack-name" style="color:#61dafb">Frontend — React</div>
+        <div class="stack-detail">
+          <strong>3 pages publiques</strong> — liste, détail cocktail, recherche<br>
+          <strong>Espace admin</strong> — gestion users + cocktails (login requis)
+        </div>
+      </div>
+    </div>
+    <div class="stack-card">
+      <div class="stack-icon">🟩</div>
+      <div>
+        <div class="stack-name" style="color:#68d391">Backend — Express REST</div>
+        <div class="stack-detail">
+          <strong>CRUD</strong> /users · /cocktails · /auth — JWT<br>
+          <strong>Règle</strong> — un user ne modifie que ses propres cocktails<br>
+          <strong>BDD</strong> — users 1 ──∞ cocktails (ORM gère la validation)
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- LAYERS -->
+  <div class="slabel">// couches de test</div>
+
+  <!-- ══════════════════════════════════════════
+       UNITAIRE
+  ══════════════════════════════════════════ -->
+  <div class="layer" id="l-unit">
+    <div class="layer-header l-unit" onclick="toggle('l-unit')">
+      <div class="layer-dot" style="background:var(--unit)"></div>
+      <div class="layer-title" style="color:var(--unit)">Tests Unitaires</div>
+      <div class="layer-subtitle">Vitest · back · 2 cibles précises · aucune BDD</div>
+      <span class="layer-arrow">▼</span>
+    </div>
+    <div class="layer-body l-unit">
+      <div class="layer-inner">
+
+        <div class="card" style="--c:var(--unit);background:rgba(34,211,238,0.04);border-color:rgba(34,211,238,0.15)">
+          <div class="card-note">
+            Seulement deux cibles ici : des <strong style="color:var(--unit)">fonctions pures isolées</strong> testables sans BDD ni réseau.
+            La validation des données est gérée par l'ORM — pas besoin de la retester.
+            Les flux complets (login, création…) sont couverts par l'E2E en staging.
+          </div>
+        </div>
+
+        <div class="grid g2">
+
+          <!-- Hashage -->
+          <div>
+            <div class="sublabel" style="margin-bottom:8px">🔐 Hashage mot de passe — bcrypt</div>
+            <div class="grid" style="gap:8px">
+              <div class="card" style="--c:var(--unit)">
+                <div class="card-head">Happy path</div>
+                <ul class="clist">
+                  <li class="ok">hashPassword(pwd) → hash non vide</li>
+                  <li class="ok">hash ≠ password original</li>
+                  <li class="ok">hash commence par <code style="color:#86efac">$2b$</code> (signature bcrypt)</li>
+                  <li class="ok">comparePassword(pwd, hash) → <code style="color:#86efac">true</code></li>
+                </ul>
+              </div>
+              <div class="card" style="--c:var(--unit)">
+                <div class="card-head">Cas d'erreur</div>
+                <ul class="clist">
+                  <li class="err">comparePassword(mauvais, hash) → <code style="color:#f87171">false</code></li>
+                  <li class="err">hashPassword('') → throw Error</li>
+                  <li class="err">hashPassword(null) → throw Error</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <!-- JWT middleware -->
+          <div>
+            <div class="sublabel" style="margin-bottom:8px">🔑 Middleware JWT — vérification token</div>
+            <div class="grid" style="gap:8px">
+              <div class="card" style="--c:var(--unit)">
+                <div class="card-head">Happy path</div>
+                <ul class="clist">
+                  <li class="ok">Token valide → <code style="color:#86efac">next()</code> appelé</li>
+                  <li class="ok">req.user contient userId + role</li>
+                  <li class="ok">Payload correctement extrait</li>
+                </ul>
+              </div>
+              <div class="card" style="--c:var(--unit)">
+                <div class="card-head">Cas d'erreur → 401</div>
+                <ul class="clist">
+                  <li class="err">Header Authorization absent → 401</li>
+                  <li class="err">Token malformé → 401</li>
+                  <li class="err">Token expiré → 401</li>
+                  <li class="err">Signature invalide → 401</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        <div class="code-block">
+          <div class="code-header">
+            <div class="dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+            <div class="code-lang">Vitest — hashage + middleware JWT</div>
+          </div>
+          <div class="code-body"><pre><span class="kw">import</span> { hashPassword, comparePassword } <span class="kw">from</span> <span class="str">'../utils/auth'</span>
+<span class="kw">import</span> { authMiddleware } <span class="kw">from</span> <span class="str">'../middlewares/auth'</span>
+<span class="kw">import</span> jwt <span class="kw">from</span> <span class="str">'jsonwebtoken'</span>
+
+<span class="cm">// ─── Hash ───────────────────────────────────────────────</span>
+<span class="fn">describe</span>(<span class="str">'hashPassword'</span>, () => {
+  <span class="fn">it</span>(<span class="str">'produit un hash bcrypt valide'</span>, <span class="kw">async</span> () => {
+    <span class="kw">const</span> hash = <span class="kw">await</span> <span class="fn">hashPassword</span>(<span class="str">'secret42'</span>)
+    <span class="fn">expect</span>(hash).<span class="fn">toMatch</span>(/^\$2b\$/)
+    <span class="fn">expect</span>(hash).<span class="fn">not</span>.<span class="fn">toBe</span>(<span class="str">'secret42'</span>)
+  })
+
+  <span class="fn">it</span>(<span class="str">'compare correctement'</span>, <span class="kw">async</span> () => {
+    <span class="kw">const</span> hash = <span class="kw">await</span> <span class="fn">hashPassword</span>(<span class="str">'secret42'</span>)
+    <span class="fn">expect</span>(<span class="kw">await</span> <span class="fn">comparePassword</span>(<span class="str">'secret42'</span>, hash)).<span class="fn">toBe</span>(<span class="kw">true</span>)
+    <span class="fn">expect</span>(<span class="kw">await</span> <span class="fn">comparePassword</span>(<span class="str">'mauvais'</span>,  hash)).<span class="fn">toBe</span>(<span class="kw">false</span>)
+  })
+
+  <span class="fn">it</span>(<span class="str">'rejette un password vide'</span>, <span class="kw">async</span> () => {
+    <span class="kw">await</span> <span class="fn">expect</span>(<span class="fn">hashPassword</span>(<span class="str">''</span>)).<span class="fn">rejects</span>.<span class="fn">toThrow</span>()
+  })
+})
+
+<span class="cm">// ─── Middleware JWT ──────────────────────────────────────</span>
+<span class="fn">describe</span>(<span class="str">'authMiddleware'</span>, () => {
+  <span class="kw">const</span> <span class="fn">mockRes</span> = () => ({ <span class="fn">status</span>: vi.<span class="fn">fn</span>().<span class="fn">mockReturnThis</span>(), <span class="fn">json</span>: vi.<span class="fn">fn</span>() })
+  <span class="kw">const</span> next = vi.<span class="fn">fn</span>()
+
+  <span class="fn">it</span>(<span class="str">'token valide → next() + req.user rempli'</span>, () => {
+    <span class="kw">const</span> token = jwt.<span class="fn">sign</span>({ userId: <span class="num">1</span>, role: <span class="str">'user'</span> }, <span class="str">'SECRET'</span>)
+    <span class="kw">const</span> req = { headers: { authorization: `Bearer ${token}` } }
+    <span class="fn">authMiddleware</span>(req, <span class="fn">mockRes</span>(), next)
+    <span class="fn">expect</span>(next).<span class="fn">toHaveBeenCalled</span>()
+    <span class="fn">expect</span>(req.user.userId).<span class="fn">toBe</span>(<span class="num">1</span>)
+  })
+
+  <span class="fn">it</span>(<span class="str">'token absent → 401'</span>, () => {
+    <span class="kw">const</span> res = <span class="fn">mockRes</span>()
+    <span class="fn">authMiddleware</span>({ headers: {} }, res, next)
+    <span class="fn">expect</span>(res.<span class="fn">status</span>).<span class="fn">toHaveBeenCalledWith</span>(<span class="num">401</span>)
+  })
+
+  <span class="fn">it</span>(<span class="str">'token expiré → 401'</span>, () => {
+    <span class="kw">const</span> token = jwt.<span class="fn">sign</span>({ userId: <span class="num">1</span> }, <span class="str">'SECRET'</span>, { expiresIn: <span class="str">'-1s'</span> })
+    <span class="kw">const</span> res = <span class="fn">mockRes</span>()
+    <span class="fn">authMiddleware</span>({ headers: { authorization: `Bearer ${token}` } }, res, next)
+    <span class="fn">expect</span>(res.<span class="fn">status</span>).<span class="fn">toHaveBeenCalledWith</span>(<span class="num">401</span>)
+  })
+})</pre></div>
+        </div>
+
+      </div>
+      <div class="concepts">
+        <span class="concept" style="color:var(--unit);border-color:rgba(34,211,238,0.3)">vi.fn() / vi.mock()</span>
+        <span class="concept" style="color:var(--unit);border-color:rgba(34,211,238,0.3)">toMatch · toBe · rejects.toThrow</span>
+        <span class="concept" style="color:var(--unit);border-color:rgba(34,211,238,0.3)">toHaveBeenCalledWith</span>
+        <span class="concept" style="color:var(--unit);border-color:rgba(34,211,238,0.3)">aucune BDD · aucun réseau · req/res mockés</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       INTEGRATION
+  ══════════════════════════════════════════ -->
+  <div class="layer" id="l-integration">
+    <div class="layer-header l-integration" onclick="toggle('l-integration')">
+      <div class="layer-dot" style="background:var(--integration)"></div>
+      <div class="layer-title" style="color:var(--integration)">Tests d'Intégration</div>
+      <div class="layer-subtitle">Jest + Supertest · toutes les routes · codes retour + ownership</div>
+      <span class="layer-arrow">▼</span>
+    </div>
+    <div class="layer-body l-integration">
+      <div class="layer-inner">
+
+        <!-- Auth -->
+        <div class="sublabel">🔐 /auth — authentification</div>
+        <div class="grid g2">
+          <div class="card" style="--c:var(--integration)">
+            <div class="card-head">Happy path</div>
+            <ul class="clist">
+              <li class="ok">POST /auth/register → <strong>201</strong> + user en BDD</li>
+              <li class="ok">POST /auth/login → <strong>200</strong> + token JWT</li>
+            </ul>
+          </div>
+          <div class="card" style="--c:var(--integration)">
+            <div class="card-head">Erreurs</div>
+            <ul class="clist">
+              <li class="err">Email déjà pris → <strong>409</strong> Conflict</li>
+              <li class="err">Mauvais password → <strong>401</strong></li>
+              <li class="err">User inexistant → <strong>401</strong> (pas de 404 : sécurité)</li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- Users -->
+        <div class="sublabel">👤 /users — gestion utilisateurs</div>
+        <div class="grid g2">
+          <div class="card" style="--c:var(--integration)">
+            <div class="card-head">Happy path</div>
+            <ul class="clist">
+              <li class="ok">GET /users → <strong>200</strong> + liste (admin)</li>
+              <li class="ok">GET /users/:id → <strong>200</strong> + user</li>
+              <li class="ok">PATCH /users/:id → <strong>200</strong> + modifié</li>
+              <li class="ok">DELETE /users/:id → <strong>204</strong> (admin)</li>
+            </ul>
+          </div>
+          <div class="card" style="--c:var(--integration)">
+            <div class="card-head">Erreurs</div>
+            <ul class="clist">
+              <li class="err">Sans token → <strong>401</strong></li>
+              <li class="err">Non-admin sur GET /users → <strong>403</strong></li>
+              <li class="err">User inexistant → <strong>404</strong></li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- Cocktails -->
+        <div class="sublabel">🍸 /cocktails — CRUD cocktails</div>
+        <div class="grid g2">
+          <div class="card" style="--c:var(--integration)">
+            <div class="card-head">Happy path</div>
+            <ul class="clist">
+              <li class="ok">GET /cocktails → <strong>200</strong> liste publique (sans token)</li>
+              <li class="ok">GET /cocktails/:id → <strong>200</strong> détail public</li>
+              <li class="ok">POST /cocktails → <strong>201</strong> (token requis)</li>
+              <li class="ok">PUT /cocktails/:id → <strong>200</strong> (propriétaire)</li>
+              <li class="ok">DELETE /cocktails/:id → <strong>204</strong> (propriétaire)</li>
+            </ul>
+          </div>
+          <div class="card" style="--c:var(--integration)">
+            <div class="card-head">Erreurs</div>
+            <ul class="clist">
+              <li class="err">POST sans token → <strong>401</strong></li>
+              <li class="err">PUT/DELETE sans token → <strong>401</strong></li>
+              <li class="err">Cocktail inexistant → <strong>404</strong></li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- OWNERSHIP — highlight spécial -->
+        <div class="ownership">
+          <div class="ownership-title">⚖️ Règle d'ownership — priorité de test</div>
+          <div class="grid g2" style="gap:10px">
+            <div>
+              <div style="font-family:'JetBrains Mono',monospace;font-size:0.63rem;color:#a78bfa;margin-bottom:7px;opacity:.8">AUTORISÉ</div>
+              <ul class="clist" style="--c:#a78bfa">
+                <li class="ok">User A modifie son propre cocktail → <strong>200</strong></li>
+                <li class="ok">User A supprime son propre cocktail → <strong>204</strong></li>
+                <li class="ok">Admin modifie n'importe quel cocktail → <strong>200</strong></li>
+              </ul>
+            </div>
+            <div>
+              <div style="font-family:'JetBrains Mono',monospace;font-size:0.63rem;color:#a78bfa;margin-bottom:7px;opacity:.8">INTERDIT → 403</div>
+              <ul class="clist" style="--c:#a78bfa">
+                <li class="err">User B modifie le cocktail de A → <strong>403</strong></li>
+                <li class="err">User B supprime le cocktail de A → <strong>403</strong></li>
+              </ul>
+            </div>
+          </div>
+          <div style="font-family:'JetBrains Mono',monospace;font-size:0.71rem;color:#475569;margin-top:11px;line-height:1.6">
+            Testé avec 2 users seedés · tokens JWT générés à la volée · middleware <code style="color:#a78bfa">checkOwnership</code> isolé
+          </div>
+        </div>
+
+        <div class="code-block">
+          <div class="code-header">
+            <div class="dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+            <div class="code-lang">Jest + Supertest — ownership + codes retour</div>
+          </div>
+          <div class="code-body"><pre><span class="fn">describe</span>(<span class="str">'PUT /cocktails/:id'</span>, () => {
+  <span class="kw">let</span> tokenA, tokenB, cocktailId
+
+  <span class="fn">beforeAll</span>(<span class="kw">async</span> () => {
+    <span class="cm">// Seed : 2 users + 1 cocktail appartenant à A</span>
+    tokenA     = <span class="kw">await</span> <span class="fn">loginAs</span>(<span class="str">'alice@test.com'</span>)
+    tokenB     = <span class="kw">await</span> <span class="fn">loginAs</span>(<span class="str">'bob@test.com'</span>)
+    cocktailId = <span class="kw">await</span> <span class="fn">seedCocktail</span>(tokenA, { name: <span class="str">'Mojito'</span> })
+  })
+
+  <span class="fn">afterAll</span>(() => db.<span class="fn">clean</span>())
+
+  <span class="fn">it</span>(<span class="str">'200 — propriétaire modifie son cocktail'</span>, <span class="kw">async</span> () => {
+    <span class="kw">const</span> res = <span class="kw">await</span> <span class="fn">request</span>(app)
+      .<span class="fn">put</span>(`/cocktails/${cocktailId}`)
+      .<span class="fn">set</span>(<span class="str">'Authorization'</span>, `Bearer ${tokenA}`)
+      .<span class="fn">send</span>({ name: <span class="str">'Mojito Royal'</span> })
+    <span class="fn">expect</span>(res.status).<span class="fn">toBe</span>(<span class="num">200</span>)
+  })
+
+  <span class="fn">it</span>(<span class="str">'403 — autre user tente de modifier'</span>, <span class="kw">async</span> () => {
+    <span class="kw">const</span> res = <span class="kw">await</span> <span class="fn">request</span>(app)
+      .<span class="fn">put</span>(`/cocktails/${cocktailId}`)
+      .<span class="fn">set</span>(<span class="str">'Authorization'</span>, `Bearer ${tokenB}`)
+      .<span class="fn">send</span>({ name: <span class="str">'Hack'</span> })
+    <span class="fn">expect</span>(res.status).<span class="fn">toBe</span>(<span class="num">403</span>)
+  })
+
+  <span class="fn">it</span>(<span class="str">'401 — sans token'</span>, <span class="kw">async</span> () => {
+    <span class="kw">const</span> res = <span class="kw">await</span> <span class="fn">request</span>(app)
+      .<span class="fn">put</span>(`/cocktails/${cocktailId}`)
+      .<span class="fn">send</span>({ name: <span class="str">'Hack'</span> })
+    <span class="fn">expect</span>(res.status).<span class="fn">toBe</span>(<span class="num">401</span>)
+  })
+})</pre></div>
+        </div>
+
+      </div>
+      <div class="concepts">
+        <span class="concept" style="color:var(--integration);border-color:rgba(52,211,153,0.3)">supertest</span>
+        <span class="concept" style="color:var(--integration);border-color:rgba(52,211,153,0.3)">BDD de test isolée</span>
+        <span class="concept" style="color:var(--integration);border-color:rgba(52,211,153,0.3)">seed + afterAll clean</span>
+        <span class="concept" style="color:var(--integration);border-color:rgba(52,211,153,0.3)">200 · 201 · 204 · 401 · 403 · 404 · 409</span>
+        <span class="concept" style="color:var(--integration);border-color:rgba(52,211,153,0.3)">GET public sans token · POST/PUT/DELETE protégés</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       E2E
+  ══════════════════════════════════════════ -->
+  <div class="layer" id="l-e2e">
+    <div class="layer-header l-e2e" onclick="toggle('l-e2e')">
+      <div class="layer-dot" style="background:var(--e2e)"></div>
+      <div class="layer-title" style="color:var(--e2e)">Tests E2E — Front + Back</div>
+      <div class="layer-subtitle">Playwright · staging · vrai navigateur · parcours complets</div>
+      <span class="layer-arrow">▼</span>
+    </div>
+    <div class="layer-body l-e2e">
+      <div class="layer-inner">
+
+        <div class="card" style="--c:var(--e2e);background:rgba(244,114,182,0.03);border-color:rgba(244,114,182,0.15)">
+          <div class="card-note">
+            Ici, <strong style="color:var(--e2e)">tout est réel</strong> : vrai navigateur Chromium, API Express live, BDD de staging.
+            Aucun mock. On teste ce que l'utilisateur vit vraiment — les flux heureux <em>et</em> les erreurs visibles dans l'UI.
+          </div>
+        </div>
+
+        <!-- Pages publiques -->
+        <div class="sublabel">🌐 Pages publiques — sans connexion</div>
+        <div class="grid g2">
+          <div class="card" style="--c:var(--e2e)">
+            <div class="card-head">Happy path</div>
+            <ul class="clist">
+              <li class="ok">Page liste → cocktails affichés correctement</li>
+              <li class="ok">Clic sur un cocktail → page détail correcte</li>
+              <li class="ok">Recherche "mojito" → résultats filtrés</li>
+            </ul>
+          </div>
+          <div class="card" style="--c:var(--e2e)">
+            <div class="card-head">Erreurs UI</div>
+            <ul class="clist">
+              <li class="err">/cocktails/99999 → composant 404 affiché</li>
+              <li class="err">Recherche sans résultat → message "aucun résultat"</li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- Auth -->
+        <div class="sublabel">🔐 Authentification</div>
+        <div class="grid g2">
+          <div class="card" style="--c:var(--e2e)">
+            <div class="card-head">Happy path</div>
+            <ul class="clist">
+              <li class="ok">Login valide → redirect /admin/dashboard</li>
+              <li class="ok">Logout → redirect /</li>
+            </ul>
+          </div>
+          <div class="card" style="--c:var(--e2e)">
+            <div class="card-head">Erreurs UI</div>
+            <ul class="clist">
+              <li class="err">Mauvais password → message d'erreur affiché</li>
+              <li class="err">Accès /admin sans login → redirect /login</li>
+              <li class="err">Token expiré pendant session → redirect /login</li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- Admin cocktails -->
+        <div class="sublabel">🍸 Espace admin — gestion cocktails</div>
+        <div class="grid g2">
+          <div class="card" style="--c:var(--e2e)">
+            <div class="card-head">Happy path</div>
+            <ul class="clist">
+              <li class="ok">Créer cocktail → apparaît dans la liste publique</li>
+              <li class="ok">Modifier cocktail → changements persistés après rechargement</li>
+              <li class="ok">Supprimer cocktail → retiré de la liste immédiatement</li>
+            </ul>
+          </div>
+          <div class="card" style="--c:var(--e2e)">
+            <div class="card-head">Erreurs UI</div>
+            <ul class="clist">
+              <li class="err">Formulaire vide → validation front bloque la soumission</li>
+              <li class="warn">Bouton modifier absent sur les cocktails d'un autre user</li>
+              <li class="err">Tentative API directe (hors UI) cocktail d'un autre → 403</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="code-block">
+          <div class="code-header">
+            <div class="dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+            <div class="code-lang">Playwright — login + création + vérification publique</div>
+          </div>
+          <div class="code-body"><pre><span class="fn">test</span>(<span class="str">'login → créer cocktail → visible côté public'</span>, <span class="kw">async</span> ({ page }) => {
+  <span class="cm">// Login</span>
+  <span class="kw">await</span> page.<span class="fn">goto</span>(<span class="str">'/login'</span>)
+  <span class="kw">await</span> page.<span class="fn">fill</span>(<span class="str">'[name=email]'</span>,    <span class="str">'alice@staging.com'</span>)
+  <span class="kw">await</span> page.<span class="fn">fill</span>(<span class="str">'[name=password]'</span>, <span class="str">'secret'</span>)
+  <span class="kw">await</span> page.<span class="fn">click</span>(<span class="str">'button[type=submit]'</span>)
+  <span class="kw">await</span> page.<span class="fn">waitForURL</span>(<span class="str">'/admin/dashboard'</span>)
+
+  <span class="cm">// Créer cocktail</span>
+  <span class="kw">await</span> page.<span class="fn">click</span>(<span class="str">'[data-testid="btn-new-cocktail"]'</span>)
+  <span class="kw">await</span> page.<span class="fn">fill</span>(<span class="str">'[name=name]'</span>,        <span class="str">'Spritz Test'</span>)
+  <span class="kw">await</span> page.<span class="fn">fill</span>(<span class="str">'[name=ingredients]'</span>, <span class="str">'Prosecco, Aperol'</span>)
+  <span class="kw">await</span> page.<span class="fn">click</span>(<span class="str">'[data-testid="btn-save"]'</span>)
+  <span class="kw">await</span> <span class="fn">expect</span>(page.<span class="fn">locator</span>(<span class="str">'.toast-success'</span>)).<span class="fn">toBeVisible</span>()
+
+  <span class="cm">// Vérifier dans la liste publique</span>
+  <span class="kw">await</span> page.<span class="fn">goto</span>(<span class="str">'/cocktails'</span>)
+  <span class="kw">await</span> <span class="fn">expect</span>(page.<span class="fn">locator</span>(<span class="str">'.cocktail-card'</span>).<span class="fn">filter</span>({ hasText: <span class="str">'Spritz Test'</span> }))
+    .<span class="fn">toBeVisible</span>()
+})
+
+<span class="fn">test</span>(<span class="str">'accès /admin sans login → redirect /login'</span>, <span class="kw">async</span> ({ page }) => {
+  <span class="kw">await</span> page.<span class="fn">goto</span>(<span class="str">'/admin/dashboard'</span>)
+  <span class="kw">await</span> <span class="fn">expect</span>(page).<span class="fn">toHaveURL</span>(/\/login/)
+})</pre></div>
+        </div>
+
+      </div>
+      <div class="concepts">
+        <span class="concept" style="color:var(--e2e);border-color:rgba(244,114,182,0.3)">Playwright</span>
+        <span class="concept" style="color:var(--e2e);border-color:rgba(244,114,182,0.3)">environnement staging</span>
+        <span class="concept" style="color:var(--e2e);border-color:rgba(244,114,182,0.3)">data-testid sur composants React</span>
+        <span class="concept" style="color:var(--e2e);border-color:rgba(244,114,182,0.3)">happy path + erreurs visibles UI</span>
+        <span class="concept" style="color:var(--e2e);border-color:rgba(244,114,182,0.3)">aucun mock — stack complète</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       SMOKE
+  ══════════════════════════════════════════ -->
+  <div class="layer" id="l-smoke">
+    <div class="layer-header l-smoke" onclick="toggle('l-smoke')">
+      <div class="layer-dot" style="background:var(--smoke)"></div>
+      <div class="layer-title" style="color:var(--smoke)">Smoke Tests 🔥</div>
+      <div class="layer-subtitle">Playwright @smoke · post-deploy · &lt; 2 min · go / no-go</div>
+      <span class="layer-arrow">▼</span>
+    </div>
+    <div class="layer-body l-smoke">
+      <div class="layer-inner">
+
+        <div class="grid g3">
+          <div class="card" style="--c:var(--smoke)">
+            <div class="card-head">API alive</div>
+            <ul class="clist">
+              <li class="ok">GET /health → 200</li>
+              <li class="ok">GET /cocktails → pas de 500</li>
+              <li class="ok">POST /auth/login → endpoint répond</li>
+            </ul>
+          </div>
+          <div class="card" style="--c:var(--smoke)">
+            <div class="card-head">Front accessible</div>
+            <ul class="clist">
+              <li class="ok">/ → charge sans erreur JS console</li>
+              <li class="ok">/cocktails → liste visible</li>
+              <li class="ok">/login → formulaire présent</li>
+            </ul>
+          </div>
+          <div class="card" style="--c:var(--smoke)">
+            <div class="card-head">Auth vitale</div>
+            <ul class="clist">
+              <li class="ok">Login compte test → token reçu</li>
+              <li class="ok">Accès /admin → 200</li>
+              <li class="err">Si KO → rollback pipeline 🔴</li>
+            </ul>
+          </div>
+        </div>
+
+      </div>
+      <div class="concepts">
+        <span class="concept" style="color:var(--smoke);border-color:rgba(251,146,60,0.3)">@smoke tag · --grep @smoke</span>
+        <span class="concept" style="color:var(--smoke);border-color:rgba(251,146,60,0.3)">déclenché automatiquement post-deploy</span>
+        <span class="concept" style="color:var(--smoke);border-color:rgba(251,146,60,0.3)">rollback si KO</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       STRESS
+  ══════════════════════════════════════════ -->
+  <div class="layer" id="l-stress">
+    <div class="layer-header l-stress" onclick="toggle('l-stress')">
+      <div class="layer-dot" style="background:var(--stress)"></div>
+      <div class="layer-title" style="color:var(--stress)">Tests de Charge — k6 ⚡</div>
+      <div class="layer-subtitle">k6 · routes API ciblées · p95 · taux d'erreur</div>
+      <span class="layer-arrow">▼</span>
+    </div>
+    <div class="layer-body l-stress">
+      <div class="layer-inner">
+
+        <div class="grid g2">
+          <div class="card" style="--c:var(--stress)">
+            <div class="card-head">Endpoints ciblés</div>
+            <ul class="clist">
+              <li>GET /cocktails — lecture publique intensive</li>
+              <li>POST /auth/login — pic de connexions simultanées</li>
+              <li>POST /cocktails — écritures concurrentes (authentifié)</li>
+              <li>GET /cocktails/:id — accès détail sous charge</li>
+            </ul>
+          </div>
+          <div class="card" style="--c:var(--stress)">
+            <div class="card-head">Seuils à valider</div>
+            <ul class="clist">
+              <li>p95 temps de réponse <strong>&lt; 500ms</strong></li>
+              <li>Taux d'erreur <strong>&lt; 1%</strong></li>
+              <li>Aucun 500 sous charge nominale</li>
+              <li>Pool BDD : pas de timeout connexion</li>
+              <li>Mémoire stable dans le temps</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="code-block">
+          <div class="code-header">
+            <div class="dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+            <div class="code-lang">k6 — scénario cocktail app</div>
+          </div>
+          <div class="code-body"><pre><span class="kw">import</span> http <span class="kw">from</span> <span class="str">'k6/http'</span>
+<span class="kw">import</span> { check, sleep } <span class="kw">from</span> <span class="str">'k6'</span>
+
+<span class="kw">export const</span> options = {
+  stages: [
+    { duration: <span class="str">'30s'</span>, target: <span class="num">30</span>  },  <span class="cm">// montée progressive</span>
+    { duration: <span class="str">'1m'</span>,  target: <span class="num">100</span> },  <span class="cm">// maintien en charge</span>
+    { duration: <span class="str">'20s'</span>, target: <span class="num">0</span>   },  <span class="cm">// redescente</span>
+  ],
+  thresholds: {
+    <span class="str">'http_req_duration'</span>: [<span class="str">'p(95)<500'</span>],
+    <span class="str">'http_req_failed'</span>:   [<span class="str">'rate<0.01'</span>],
+  }
+}
+
+<span class="kw">export default function</span> () {
+  <span class="cm">// Lecture publique</span>
+  <span class="kw">const</span> list = http.<span class="fn">get</span>(<span class="str">'https://api.staging/cocktails'</span>)
+  <span class="fn">check</span>(list, { <span class="str">'status 200'</span>: r => r.status === <span class="num">200</span> })
+
+  <span class="cm">// Détail d'un cocktail</span>
+  <span class="kw">const</span> detail = http.<span class="fn">get</span>(<span class="str">'https://api.staging/cocktails/1'</span>)
+  <span class="fn">check</span>(detail, { <span class="str">'status 200'</span>: r => r.status === <span class="num">200</span> })
+
+  <span class="fn">sleep</span>(<span class="num">1</span>)
+}</pre></div>
+        </div>
+
+      </div>
+      <div class="concepts">
+        <span class="concept" style="color:var(--stress);border-color:rgba(248,113,113,0.3)">k6</span>
+        <span class="concept" style="color:var(--stress);border-color:rgba(248,113,113,0.3)">virtual users · stages · thresholds</span>
+        <span class="concept" style="color:var(--stress);border-color:rgba(248,113,113,0.3)">p95 · error rate</span>
+        <span class="concept" style="color:var(--stress);border-color:rgba(248,113,113,0.3)">environnement staging dédié</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- NRT / CI ── -->
+  <div class="nrt-banner">
+    <div class="nrt-top">
+      <span style="font-size:1.1rem">🔁</span>
+      <div class="nrt-title">TNR — CI/CD · tout tourne à chaque PR</div>
+      <span class="nrt-badge">STRATÉGIE</span>
+    </div>
+
+    <div class="nrt-pipeline">
+      <div class="nrt-step">
+        <div class="nrt-icon">🟦</div>
+        <div class="nrt-name" style="color:var(--unit)">Unitaires</div>
+        <div class="nrt-tool">Vitest</div>
+        <div class="nrt-trigger">sur chaque push</div>
+      </div>
+      <div class="nrt-step">
+        <div class="nrt-icon">🟩</div>
+        <div class="nrt-name" style="color:var(--integration)">Intégration</div>
+        <div class="nrt-tool">Jest + Supertest</div>
+        <div class="nrt-trigger">sur chaque push</div>
+      </div>
+      <div class="nrt-step">
+        <div class="nrt-icon">🩷</div>
+        <div class="nrt-name" style="color:var(--e2e)">E2E</div>
+        <div class="nrt-tool">Playwright</div>
+        <div class="nrt-trigger">sur PR → main</div>
+      </div>
+      <div class="nrt-step">
+        <div class="nrt-icon">🔥</div>
+        <div class="nrt-name" style="color:var(--smoke)">Smoke</div>
+        <div class="nrt-tool">Playwright @smoke</div>
+        <div class="nrt-trigger">post-deploy staging</div>
+      </div>
+      <div class="nrt-step">
+        <div class="nrt-icon">⚡</div>
+        <div class="nrt-name" style="color:var(--stress)">Charge</div>
+        <div class="nrt-tool">k6</div>
+        <div class="nrt-trigger">planifié / ponctuel</div>
+      </div>
+    </div>
+
+    <div class="nrt-note">
+      Les tests unitaires + intégration tournent sur <strong>chaque push</strong> (rapides, feedback immédiat).
+      Les E2E sur <strong>chaque PR vers main</strong> (plus lents). Le smoke se déclenche <strong>automatiquement après deploy</strong>.
+      Le k6 est lancé <strong>ponctuellement</strong> ou planifié — pas sur chaque PR (trop lourd, environnement dédié requis).
+    </div>
+  </div>
+
+</div>
+
+<script>
+function toggle(id) {
+  const el = document.getElementById(id)
+  el.classList.toggle('open')
+}
+// Ouvrir le premier par défaut
+document.getElementById('l-unit').classList.add('open')
+</script>
+</body>
+</html>

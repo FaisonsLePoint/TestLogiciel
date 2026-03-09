@@ -1,0 +1,1071 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Comment se font les tests — Guide complet</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Syne:wght@400;700;800&display=swap');
+
+  :root {
+    --bg: #0a0e1a;
+    --surface: #111827;
+    --border: #1e2d40;
+    --unit: #22d3ee;
+    --integration: #34d399;
+    --functional: #a78bfa;
+    --e2e: #f472b6;
+    --smoke: #fb923c;
+    --stress: #f87171;
+    --nrt: #fbbf24;
+    --text: #e2e8f0;
+    --muted: #64748b;
+    --code-bg: #060d1a;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Syne', sans-serif;
+    min-height: 100vh;
+    padding: 40px 20px 80px;
+    overflow-x: hidden;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(ellipse at 30% 20%, rgba(34,211,238,0.04) 0%, transparent 50%),
+                radial-gradient(ellipse at 70% 80%, rgba(167,139,250,0.04) 0%, transparent 50%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .container {
+    max-width: 1000px;
+    margin: 0 auto;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* HEADER */
+  header {
+    text-align: center;
+    margin-bottom: 70px;
+    animation: fadeDown 0.6s ease both;
+  }
+
+  header h1 {
+    font-size: clamp(1.8rem, 4vw, 3rem);
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    background: linear-gradient(135deg, var(--unit) 0%, var(--functional) 50%, var(--e2e) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    line-height: 1.1;
+    margin-bottom: 12px;
+  }
+
+  header p {
+    color: var(--muted);
+    font-size: 0.9rem;
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  /* NAV PILLS */
+  .nav {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: center;
+    margin-bottom: 60px;
+    animation: fadeDown 0.6s ease 0.1s both;
+    position: sticky;
+    top: 16px;
+    z-index: 50;
+  }
+
+  .nav-pill {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.7rem;
+    padding: 6px 14px;
+    border-radius: 20px;
+    border: 1px solid rgba(255,255,255,0.1);
+    background: rgba(10,14,26,0.9);
+    backdrop-filter: blur(10px);
+    cursor: pointer;
+    color: var(--muted);
+    transition: all 0.2s;
+    text-decoration: none;
+  }
+  .nav-pill:hover { color: var(--text); border-color: rgba(255,255,255,0.25); }
+  .nav-pill.unit       { --c: var(--unit); }
+  .nav-pill.integration{ --c: var(--integration); }
+  .nav-pill.functional { --c: var(--functional); }
+  .nav-pill.e2e        { --c: var(--e2e); }
+  .nav-pill.smoke      { --c: var(--smoke); }
+  .nav-pill.stress     { --c: var(--stress); }
+  .nav-pill.nrt        { --c: var(--nrt); }
+  .nav-pill:hover, .nav-pill.active {
+    color: var(--c);
+    border-color: var(--c);
+    background: rgba(10,14,26,0.95);
+  }
+
+  /* SECTION */
+  .test-section {
+    margin-bottom: 64px;
+    animation: fadeUp 0.5s ease both;
+    scroll-margin-top: 80px;
+  }
+
+  .section-header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 28px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .section-badge {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.6rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    padding: 4px 10px;
+    border-radius: 4px;
+    white-space: nowrap;
+  }
+
+  .section-title {
+    font-size: clamp(1.4rem, 3vw, 2rem);
+    font-weight: 800;
+    letter-spacing: -0.01em;
+  }
+
+  .section-scope {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.72rem;
+    color: var(--muted);
+    margin-top: 4px;
+  }
+
+  /* CARD GRID */
+  .cards {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+    margin-bottom: 20px;
+  }
+
+  .cards.triple { grid-template-columns: 1fr 1fr 1fr; }
+  .cards.full   { grid-template-columns: 1fr; }
+
+  .card {
+    border-radius: 12px;
+    padding: 20px;
+    border: 1px solid rgba(255,255,255,0.07);
+    background: var(--surface);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0;
+    width: 3px;
+    height: 100%;
+    background: var(--accent);
+  }
+
+  .card-head {
+    font-size: 0.68rem;
+    font-family: 'JetBrains Mono', monospace;
+    color: var(--accent);
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    margin-bottom: 10px;
+    opacity: 0.9;
+  }
+
+  .card-title-small {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: 8px;
+  }
+
+  .card-text {
+    font-size: 0.8rem;
+    font-family: 'JetBrains Mono', monospace;
+    color: #94a3b8;
+    line-height: 1.7;
+  }
+
+  ul.card-list {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    margin-top: 6px;
+  }
+
+  ul.card-list li {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.78rem;
+    color: #94a3b8;
+    padding-left: 14px;
+    position: relative;
+    line-height: 1.55;
+  }
+
+  ul.card-list li::before {
+    content: '→';
+    position: absolute;
+    left: 0;
+    color: var(--accent);
+    opacity: 0.7;
+  }
+
+  /* CODE BLOCK */
+  .code-block {
+    border-radius: 10px;
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    overflow: hidden;
+    margin-top: 14px;
+  }
+
+  .code-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 16px;
+    background: rgba(255,255,255,0.03);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .code-lang {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.65rem;
+    color: var(--muted);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  .code-dots { display: flex; gap: 5px; }
+  .code-dot {
+    width: 9px; height: 9px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.1);
+  }
+
+  .code-body {
+    padding: 18px;
+    overflow-x: auto;
+  }
+
+  pre {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.76rem;
+    line-height: 1.75;
+    color: #cbd5e1;
+    white-space: pre;
+  }
+
+  /* Syntax highlight */
+  .kw  { color: #f472b6; }
+  .fn  { color: #60a5fa; }
+  .str { color: #86efac; }
+  .cm  { color: #475569; font-style: italic; }
+  .num { color: #fb923c; }
+  .cls { color: #fbbf24; }
+  .dec { color: #a78bfa; }
+
+  /* CONCEPT PILLS */
+  .concept-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 14px;
+  }
+
+  .concept {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.7rem;
+    padding: 5px 12px;
+    border-radius: 6px;
+    border: 1px solid;
+    background: rgba(255,255,255,0.03);
+  }
+
+  /* FLOW DIAGRAM */
+  .flow {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    flex-wrap: wrap;
+    margin-top: 14px;
+    padding: 16px;
+    background: var(--code-bg);
+    border-radius: 10px;
+    border: 1px solid var(--border);
+  }
+
+  .flow-step {
+    flex: 1;
+    min-width: 80px;
+    text-align: center;
+    padding: 10px 6px;
+    border-radius: 8px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.68rem;
+    line-height: 1.4;
+    border: 1px solid;
+  }
+
+  .flow-arrow {
+    font-size: 1.2rem;
+    color: var(--muted);
+    padding: 0 6px;
+    flex-shrink: 0;
+  }
+
+  /* DIVIDER */
+  .divider {
+    height: 1px;
+    background: var(--border);
+    margin: 60px 0;
+  }
+
+  .divider.nrt {
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--nrt), transparent);
+    margin: 60px 0;
+  }
+
+  /* ACCENT per section */
+  .s-unit       { --accent: var(--unit); }
+  .s-integration{ --accent: var(--integration); }
+  .s-functional { --accent: var(--functional); }
+  .s-e2e        { --accent: var(--e2e); }
+  .s-smoke      { --accent: var(--smoke); }
+  .s-stress     { --accent: var(--stress); }
+  .s-nrt        { --accent: var(--nrt); }
+
+  /* NRT special card */
+  .nrt-wrap {
+    border-radius: 14px;
+    border: 1px dashed rgba(251,191,36,0.4);
+    background: rgba(251,191,36,0.04);
+    padding: 28px;
+  }
+
+  @keyframes fadeDown {
+    from { opacity: 0; transform: translateY(-16px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  @media (max-width: 660px) {
+    .cards, .cards.triple { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <header>
+    <h1>Comment se font les tests ?</h1>
+    <p>// anatomie pratique de chaque type de test — code · mocks · data · assertions</p>
+  </header>
+
+  <nav class="nav">
+    <a class="nav-pill unit"        href="#unit">Unitaires</a>
+    <a class="nav-pill integration" href="#integration">Intégration</a>
+    <a class="nav-pill functional"  href="#functional">Fonctionnels</a>
+    <a class="nav-pill e2e"         href="#e2e">E2E</a>
+    <a class="nav-pill smoke"       href="#smoke">Smoke</a>
+    <a class="nav-pill stress"      href="#stress">Stress</a>
+    <a class="nav-pill nrt"         href="#nrt">TNR</a>
+  </nav>
+
+  <!-- ============================================================ -->
+  <!-- UNIT -->
+  <!-- ============================================================ -->
+  <section id="unit" class="test-section s-unit">
+    <div class="section-header">
+      <div>
+        <div class="section-badge" style="background:rgba(34,211,238,0.1);color:var(--unit);border:1px solid rgba(34,211,238,0.3)">Base de la pyramide</div>
+        <div class="section-title" style="color:var(--unit)">Tests Unitaires</div>
+        <div class="section-scope">Périmètre : une seule fonction / méthode / classe — en isolation totale</div>
+      </div>
+    </div>
+
+    <div class="cards">
+      <div class="card s-unit">
+        <div class="card-head">Sur quoi on teste ?</div>
+        <ul class="card-list">
+          <li>Une <strong>fonction pure</strong> (entrée → sortie)</li>
+          <li>Une méthode d'une classe</li>
+          <li>Un helper, un utilitaire, un validator</li>
+          <li>Un reducer (Redux, Zustand…)</li>
+          <li>Un composant UI isolé (React, Vue…)</li>
+        </ul>
+      </div>
+      <div class="card s-unit">
+        <div class="card-head">Structure AAA</div>
+        <div class="card-title-small">Arrange · Act · Assert</div>
+        <ul class="card-list">
+          <li><strong>Arrange</strong> — préparer les données d'entrée</li>
+          <li><strong>Act</strong> — appeler la fonction testée</li>
+          <li><strong>Assert</strong> — vérifier le résultat obtenu</li>
+        </ul>
+        <div class="card-text" style="margin-top:10px">Chaque test = un seul comportement vérifié</div>
+      </div>
+    </div>
+
+    <div class="cards">
+      <div class="card s-unit">
+        <div class="card-head">Mocks &amp; Stubs</div>
+        <div class="card-text">Les dépendances externes sont remplacées pour isoler l'unité :</div>
+        <ul class="card-list" style="margin-top:8px">
+          <li><strong>Mock</strong> : remplace une fonction et vérifie les appels</li>
+          <li><strong>Stub</strong> : retourne une valeur fixe à la place d'une vraie dépendance</li>
+          <li><strong>Spy</strong> : observe une vraie fonction sans la remplacer</li>
+          <li>Exemples : BDD, API, système de fichiers, date/heure</li>
+        </ul>
+      </div>
+      <div class="card s-unit">
+        <div class="card-head">Data de test</div>
+        <div class="card-text">On construit des données <em>contrôlées</em> :</div>
+        <ul class="card-list" style="margin-top:8px">
+          <li>Valeurs nominales (cas standard)</li>
+          <li>Valeurs limites (0, -1, null, "", [], undefined)</li>
+          <li>Cas d'erreur attendus (throw, reject)</li>
+          <li>Fixtures statiques (objets JSON en dur)</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="code-block">
+      <div class="code-header">
+        <div class="code-dots"><div class="code-dot"></div><div class="code-dot"></div><div class="code-dot"></div></div>
+        <div class="code-lang">Jest / Vitest — exemple test unitaire</div>
+      </div>
+      <div class="code-body"><pre><span class="cm">// ✅ Fonction à tester</span>
+<span class="kw">function</span> <span class="fn">calculerTaxe</span>(prix, taux) {
+  <span class="kw">if</span> (prix &lt; <span class="num">0</span>) <span class="kw">throw new</span> <span class="cls">Error</span>(<span class="str">'Prix invalide'</span>)
+  <span class="kw">return</span> +(prix * (<span class="num">1</span> + taux)).toFixed(<span class="num">2</span>)
+}
+
+<span class="cm">// 🧪 Le test</span>
+<span class="fn">describe</span>(<span class="str">'calculerTaxe'</span>, () =&gt; {
+
+  <span class="fn">it</span>(<span class="str">'calcule le prix TTC correctement'</span>, () =&gt; {
+    <span class="cm">// Arrange</span>
+    <span class="kw">const</span> prix = <span class="num">100</span>, taux = <span class="num">0.2</span>
+
+    <span class="cm">// Act</span>
+    <span class="kw">const</span> result = <span class="fn">calculerTaxe</span>(prix, taux)
+
+    <span class="cm">// Assert</span>
+    <span class="fn">expect</span>(result).<span class="fn">toBe</span>(<span class="num">120</span>)
+  })
+
+  <span class="fn">it</span>(<span class="str">'lève une erreur si le prix est négatif'</span>, () =&gt; {
+    <span class="fn">expect</span>(() =&gt; <span class="fn">calculerTaxe</span>(-<span class="num">10</span>, <span class="num">0.2</span>)).<span class="fn">toThrow</span>(<span class="str">'Prix invalide'</span>)
+  })
+})</pre></div>
+    </div>
+
+    <div class="concept-row">
+      <span class="concept" style="color:var(--unit);border-color:rgba(34,211,238,0.3)">describe / it / test</span>
+      <span class="concept" style="color:var(--unit);border-color:rgba(34,211,238,0.3)">expect().toBe()</span>
+      <span class="concept" style="color:var(--unit);border-color:rgba(34,211,238,0.3)">jest.fn() / vi.fn()</span>
+      <span class="concept" style="color:var(--unit);border-color:rgba(34,211,238,0.3)">jest.mock()</span>
+      <span class="concept" style="color:var(--unit);border-color:rgba(34,211,238,0.3)">beforeEach / afterEach</span>
+      <span class="concept" style="color:var(--unit);border-color:rgba(34,211,238,0.3)">toThrow · toEqual · toHaveBeenCalled</span>
+    </div>
+  </section>
+
+  <div class="divider"></div>
+
+  <!-- ============================================================ -->
+  <!-- INTEGRATION -->
+  <!-- ============================================================ -->
+  <section id="integration" class="test-section s-integration">
+    <div class="section-header">
+      <div>
+        <div class="section-badge" style="background:rgba(52,211,153,0.1);color:var(--integration);border:1px solid rgba(52,211,153,0.3)">Milieu de la pyramide</div>
+        <div class="section-title" style="color:var(--integration)">Tests d'Intégration</div>
+        <div class="section-scope">Périmètre : plusieurs modules qui collaborent — API, BDD, services</div>
+      </div>
+    </div>
+
+    <div class="cards triple">
+      <div class="card s-integration">
+        <div class="card-head">Sur quoi on teste ?</div>
+        <ul class="card-list">
+          <li>Route API + contrôleur + service</li>
+          <li>Service + accès BDD (requêtes SQL/ORM)</li>
+          <li>Module A qui appelle le module B</li>
+          <li>Queue de messages (pub/sub)</li>
+          <li>Composants UI + store + API mock</li>
+        </ul>
+      </div>
+      <div class="card s-integration">
+        <div class="card-head">Qu'est-ce qu'on remplace ?</div>
+        <ul class="card-list">
+          <li>On garde les modules <em>à tester ensemble</em></li>
+          <li>On mock ce qui est hors périmètre (services tiers, emails…)</li>
+          <li>BDD : en mémoire (SQLite) ou conteneur Docker</li>
+          <li>HTTP externe : intercepté avec <strong>MSW</strong> ou <strong>nock</strong></li>
+        </ul>
+      </div>
+      <div class="card s-integration">
+        <div class="card-head">Data de test</div>
+        <ul class="card-list">
+          <li>Fixtures insertées avant le test (<em>seed</em>)</li>
+          <li>BDD nettoyée entre chaque test</li>
+          <li>Factories pour générer des objets cohérents</li>
+          <li>Payloads JSON réalistes (proche de la prod)</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="code-block">
+      <div class="code-header">
+        <div class="code-dots"><div class="code-dot"></div><div class="code-dot"></div><div class="code-dot"></div></div>
+        <div class="code-lang">Jest + Supertest — test d'une route API</div>
+      </div>
+      <div class="code-body"><pre><span class="kw">import</span> request <span class="kw">from</span> <span class="str">'supertest'</span>
+<span class="kw">import</span> app <span class="kw">from</span> <span class="str">'../app'</span>
+<span class="kw">import</span> { db } <span class="kw">from</span> <span class="str">'../db'</span>
+
+<span class="fn">beforeEach</span>(<span class="kw">async</span> () =&gt; {
+  <span class="kw">await</span> db.<span class="fn">seed</span>()              <span class="cm">// injecter des données de test</span>
+})
+
+<span class="fn">afterEach</span>(<span class="kw">async</span> () =&gt; {
+  <span class="kw">await</span> db.<span class="fn">clean</span>()             <span class="cm">// remettre à zéro</span>
+})
+
+<span class="fn">it</span>(<span class="str">'GET /users/:id → retourne l\'utilisateur'</span>, <span class="kw">async</span> () =&gt; {
+  <span class="kw">const</span> res = <span class="kw">await</span> <span class="fn">request</span>(app)
+    .<span class="fn">get</span>(<span class="str">'/users/42'</span>)
+    .<span class="fn">set</span>(<span class="str">'Authorization'</span>, <span class="str">'Bearer test-token'</span>)
+
+  <span class="fn">expect</span>(res.status).<span class="fn">toBe</span>(<span class="num">200</span>)
+  <span class="fn">expect</span>(res.body).<span class="fn">toMatchObject</span>({
+    id: <span class="num">42</span>,
+    email: <span class="str">'alice@test.com'</span>
+  })
+})</pre></div>
+    </div>
+
+    <div class="flow">
+      <div class="flow-step" style="color:var(--integration);border-color:rgba(52,211,153,0.3);background:rgba(52,211,153,0.07)">Requête HTTP<br>(supertest)</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step" style="color:var(--integration);border-color:rgba(52,211,153,0.3);background:rgba(52,211,153,0.07)">Route Express<br>(contrôleur)</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step" style="color:var(--integration);border-color:rgba(52,211,153,0.3);background:rgba(52,211,153,0.07)">Service<br>(logique)</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step" style="color:var(--integration);border-color:rgba(52,211,153,0.3);background:rgba(52,211,153,0.07)">BDD test<br>(SQLite/Docker)</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step" style="color:var(--integration);border-color:rgba(52,211,153,0.3);background:rgba(52,211,153,0.07)">Assert<br>réponse</div>
+    </div>
+
+    <div class="concept-row">
+      <span class="concept" style="color:var(--integration);border-color:rgba(52,211,153,0.3)">supertest</span>
+      <span class="concept" style="color:var(--integration);border-color:rgba(52,211,153,0.3)">MSW (mock service worker)</span>
+      <span class="concept" style="color:var(--integration);border-color:rgba(52,211,153,0.3)">BDD en mémoire</span>
+      <span class="concept" style="color:var(--integration);border-color:rgba(52,211,153,0.3)">seed / fixtures</span>
+      <span class="concept" style="color:var(--integration);border-color:rgba(52,211,153,0.3)">beforeEach + cleanup</span>
+      <span class="concept" style="color:var(--integration);border-color:rgba(52,211,153,0.3)">toMatchObject</span>
+    </div>
+  </section>
+
+  <div class="divider"></div>
+
+  <!-- ============================================================ -->
+  <!-- FUNCTIONAL -->
+  <!-- ============================================================ -->
+  <section id="functional" class="test-section s-functional">
+    <div class="section-header">
+      <div>
+        <div class="section-badge" style="background:rgba(167,139,250,0.1);color:var(--functional);border:1px solid rgba(167,139,250,0.3)">Haut de la pyramide</div>
+        <div class="section-title" style="color:var(--functional)">Tests Fonctionnels</div>
+        <div class="section-scope">Périmètre : fonctionnalité métier complète — du point de vue utilisateur</div>
+      </div>
+    </div>
+
+    <div class="cards">
+      <div class="card s-functional">
+        <div class="card-head">Sur quoi on teste ?</div>
+        <ul class="card-list">
+          <li>Un <strong>scénario métier</strong> de bout en bout (ex: passer une commande)</li>
+          <li>Le comportement d'une <strong>feature complète</strong></li>
+          <li>Les règles de gestion (ex: promo si panier &gt; 50€)</li>
+          <li>Les cas nominaux <em>et</em> les cas d'erreur métier</li>
+          <li>Peut être UI ou purement API</li>
+        </ul>
+      </div>
+      <div class="card s-functional">
+        <div class="card-head">Différence avec l'intégration</div>
+        <div class="card-text">Les tests d'intégration vérifient que les <em>modules communiquent</em>. Les tests fonctionnels vérifient que <em>la feature répond aux specs métier</em>. On pense en termes de :</div>
+        <ul class="card-list" style="margin-top:8px">
+          <li>"En tant qu'utilisateur, quand je... alors..."</li>
+          <li>User stories / critères d'acceptance</li>
+          <li>BDD : Given / When / Then (Cucumber)</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="cards">
+      <div class="card s-functional">
+        <div class="card-head">Mocks &amp; environnement</div>
+        <ul class="card-list">
+          <li>API tierces mockées (paiement, email, SMS)</li>
+          <li>BDD de test avec données représentatives</li>
+          <li>Auth simulée avec tokens de test</li>
+          <li>Date/heure parfois fixée (sinon tests instables)</li>
+        </ul>
+      </div>
+      <div class="card s-functional">
+        <div class="card-head">Data &amp; assertions</div>
+        <ul class="card-list">
+          <li>Scénarios complets avec données réalistes</li>
+          <li>Assertions sur le résultat <em>métier</em>, pas technique</li>
+          <li>Ex: "la commande est bien en état CONFIRMED"</li>
+          <li>Ex: "l'email de confirmation a été envoyé (mock)"</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="code-block">
+      <div class="code-header">
+        <div class="code-dots"><div class="code-dot"></div><div class="code-dot"></div><div class="code-dot"></div></div>
+        <div class="code-lang">Playwright — test fonctionnel d'ajout au panier</div>
+      </div>
+      <div class="code-body"><pre><span class="cm">// Scénario métier : "Un utilisateur connecté peut ajouter un produit"</span>
+<span class="fn">test</span>(<span class="str">'ajout au panier → badge mis à jour'</span>, <span class="kw">async</span> ({ page }) =&gt; {
+
+  <span class="cm">// Arrange — contexte utilisateur connecté</span>
+  <span class="kw">await</span> page.<span class="fn">goto</span>(<span class="str">'/produits/sneaker-42'</span>)
+
+  <span class="cm">// Act — interaction utilisateur</span>
+  <span class="kw">await</span> page.<span class="fn">click</span>(<span class="str">'[data-testid="btn-ajouter"]'</span>)
+
+  <span class="cm">// Assert — résultat métier visible</span>
+  <span class="kw">await</span> <span class="fn">expect</span>(page.<span class="fn">locator</span>(<span class="str">'.cart-badge'</span>))
+    .<span class="fn">toHaveText</span>(<span class="str">'1'</span>)
+
+  <span class="kw">await</span> <span class="fn">expect</span>(page.<span class="fn">locator</span>(<span class="str">'.toast'</span>))
+    .<span class="fn">toContainText</span>(<span class="str">'Ajouté au panier'</span>)
+})</pre></div>
+    </div>
+
+    <div class="concept-row">
+      <span class="concept" style="color:var(--functional);border-color:rgba(167,139,250,0.3)">Given / When / Then</span>
+      <span class="concept" style="color:var(--functional);border-color:rgba(167,139,250,0.3)">data-testid</span>
+      <span class="concept" style="color:var(--functional);border-color:rgba(167,139,250,0.3)">mock API tierce</span>
+      <span class="concept" style="color:var(--functional);border-color:rgba(167,139,250,0.3)">assertions métier</span>
+      <span class="concept" style="color:var(--functional);border-color:rgba(167,139,250,0.3)">user stories</span>
+      <span class="concept" style="color:var(--functional);border-color:rgba(167,139,250,0.3)">Cucumber / BDD</span>
+    </div>
+  </section>
+
+  <div class="divider"></div>
+
+  <!-- ============================================================ -->
+  <!-- E2E -->
+  <!-- ============================================================ -->
+  <section id="e2e" class="test-section s-e2e">
+    <div class="section-header">
+      <div>
+        <div class="section-badge" style="background:rgba(244,114,182,0.1);color:var(--e2e);border:1px solid rgba(244,114,182,0.3)">Sommet de la pyramide</div>
+        <div class="section-title" style="color:var(--e2e)">Tests End-to-End (E2E)</div>
+        <div class="section-scope">Périmètre : navigateur → frontend → backend → BDD — aucun mock</div>
+      </div>
+    </div>
+
+    <div class="cards">
+      <div class="card s-e2e">
+        <div class="card-head">Sur quoi on teste ?</div>
+        <ul class="card-list">
+          <li>Parcours utilisateur <strong>complets et critiques</strong></li>
+          <li>Ex: inscription → login → achat → confirmation email</li>
+          <li>Interaction réelle avec un navigateur (Chromium, Firefox)</li>
+          <li>Stack complète sans aucun remplacement</li>
+          <li>Environnement de staging (proche de la prod)</li>
+        </ul>
+      </div>
+      <div class="card s-e2e">
+        <div class="card-head">Aucun mock — tout est réel</div>
+        <div class="card-text">C'est la force <em>et</em> la faiblesse des tests E2E :</div>
+        <ul class="card-list" style="margin-top:8px">
+          <li>✅ Valide l'intégration complète du système</li>
+          <li>✅ Teste ce que l'utilisateur vit vraiment</li>
+          <li>⚠️ Lents (secondes par test)</li>
+          <li>⚠️ Fragiles (dépendent du réseau, UI, timing)</li>
+          <li>⚠️ Coûteux à maintenir</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="code-block">
+      <div class="code-header">
+        <div class="code-dots"><div class="code-dot"></div><div class="code-dot"></div><div class="code-dot"></div></div>
+        <div class="code-lang">Playwright — parcours complet login + achat</div>
+      </div>
+      <div class="code-body"><pre><span class="fn">test</span>(<span class="str">'parcours complet : login → achat → confirmation'</span>, <span class="kw">async</span> ({ page }) =&gt; {
+
+  <span class="cm">// 1. Login réel</span>
+  <span class="kw">await</span> page.<span class="fn">goto</span>(<span class="str">'/login'</span>)
+  <span class="kw">await</span> page.<span class="fn">fill</span>(<span class="str">'[name=email]'</span>, <span class="str">'alice@test.com'</span>)
+  <span class="kw">await</span> page.<span class="fn">fill</span>(<span class="str">'[name=password]'</span>, <span class="str">'secret'</span>)
+  <span class="kw">await</span> page.<span class="fn">click</span>(<span class="str">'button[type=submit]'</span>)
+  <span class="kw">await</span> page.<span class="fn">waitForURL</span>(<span class="str">'/dashboard'</span>)
+
+  <span class="cm">// 2. Ajout produit + commande</span>
+  <span class="kw">await</span> page.<span class="fn">goto</span>(<span class="str">'/produits/42'</span>)
+  <span class="kw">await</span> page.<span class="fn">click</span>(<span class="str">'text=Ajouter au panier'</span>)
+  <span class="kw">await</span> page.<span class="fn">click</span>(<span class="str">'text=Commander'</span>)
+
+  <span class="cm">// 3. Vérification confirmation</span>
+  <span class="kw">await</span> <span class="fn">expect</span>(page).<span class="fn">toHaveURL</span>(<span class="str">/\/confirmation/</span>)
+  <span class="kw">await</span> <span class="fn">expect</span>(page.<span class="fn">locator</span>(<span class="str">'h1'</span>)).<span class="fn">toContainText</span>(<span class="str">'Commande confirmée'</span>)
+})</pre></div>
+    </div>
+
+    <div class="flow">
+      <div class="flow-step" style="color:var(--e2e);border-color:rgba(244,114,182,0.3);background:rgba(244,114,182,0.07)">Navigateur<br>Chromium</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step" style="color:var(--e2e);border-color:rgba(244,114,182,0.3);background:rgba(244,114,182,0.07)">Frontend<br>React/Vue</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step" style="color:var(--e2e);border-color:rgba(244,114,182,0.3);background:rgba(244,114,182,0.07)">API REST<br>réelle</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step" style="color:var(--e2e);border-color:rgba(244,114,182,0.3);background:rgba(244,114,182,0.07)">BDD<br>staging</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step" style="color:var(--e2e);border-color:rgba(244,114,182,0.3);background:rgba(244,114,182,0.07)">Assert<br>UI / URL</div>
+    </div>
+
+    <div class="concept-row">
+      <span class="concept" style="color:var(--e2e);border-color:rgba(244,114,182,0.3)">page.goto / click / fill</span>
+      <span class="concept" style="color:var(--e2e);border-color:rgba(244,114,182,0.3)">waitForURL / waitForSelector</span>
+      <span class="concept" style="color:var(--e2e);border-color:rgba(244,114,182,0.3)">screenshots / vidéos</span>
+      <span class="concept" style="color:var(--e2e);border-color:rgba(244,114,182,0.3)">retry automatique</span>
+      <span class="concept" style="color:var(--e2e);border-color:rgba(244,114,182,0.3)">parallelisme</span>
+      <span class="concept" style="color:var(--e2e);border-color:rgba(244,114,182,0.3)">environnement staging</span>
+    </div>
+  </section>
+
+  <div class="divider"></div>
+
+  <!-- ============================================================ -->
+  <!-- SMOKE -->
+  <!-- ============================================================ -->
+  <section id="smoke" class="test-section s-smoke">
+    <div class="section-header">
+      <div>
+        <div class="section-badge" style="background:rgba(251,146,60,0.1);color:var(--smoke);border:1px solid rgba(251,146,60,0.3)">Test spécialisé</div>
+        <div class="section-title" style="color:var(--smoke)">Tests Smoke 🔥</div>
+        <div class="section-scope">Périmètre : fonctions vitales uniquement — go / no-go post-déploiement</div>
+      </div>
+    </div>
+
+    <div class="cards">
+      <div class="card s-smoke">
+        <div class="card-head">Qu'est-ce qu'on vérifie ?</div>
+        <ul class="card-list">
+          <li>L'application <strong>démarre et répond</strong></li>
+          <li>Les endpoints critiques (health check, login…)</li>
+          <li>La page d'accueil se charge sans erreur 500</li>
+          <li>Les connexions BDD / cache / services essentiels</li>
+          <li>Rien de plus — c'est volontairement minimal</li>
+        </ul>
+      </div>
+      <div class="card s-smoke">
+        <div class="card-head">Comment ça s'exécute ?</div>
+        <ul class="card-list">
+          <li>Sous-ensemble <em>tagué</em> de tests existants</li>
+          <li>Lancé automatiquement après chaque déploiement CI/CD</li>
+          <li>Doit passer en &lt; 2-3 minutes</li>
+          <li>Si ça échoue → rollback immédiat</li>
+          <li>Résultat binaire : 🟢 OK ou 🔴 KO</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="code-block">
+      <div class="code-header">
+        <div class="code-dots"><div class="code-dot"></div><div class="code-dot"></div><div class="code-dot"></div></div>
+        <div class="code-lang">Playwright — suite smoke taggée</div>
+      </div>
+      <div class="code-body"><pre><span class="cm">// playwright.config.ts → tag @smoke pour filtrer</span>
+<span class="fn">test</span>(<span class="str">'@smoke — health check API'</span>, <span class="kw">async</span> ({ request }) =&gt; {
+  <span class="kw">const</span> res = <span class="kw">await</span> request.<span class="fn">get</span>(<span class="str">'/api/health'</span>)
+  <span class="fn">expect</span>(res.<span class="fn">status</span>()).<span class="fn">toBe</span>(<span class="num">200</span>)
+})
+
+<span class="fn">test</span>(<span class="str">'@smoke — page d\'accueil accessible'</span>, <span class="kw">async</span> ({ page }) =&gt; {
+  <span class="kw">await</span> page.<span class="fn">goto</span>(<span class="str">'/'</span>)
+  <span class="kw">await</span> <span class="fn">expect</span>(page).<span class="fn">not</span>.<span class="fn">toHaveTitle</span>(<span class="str">/Error/</span>)
+})
+
+<span class="fn">test</span>(<span class="str">'@smoke — login fonctionnel'</span>, <span class="kw">async</span> ({ page }) =&gt; {
+  <span class="kw">await</span> page.<span class="fn">goto</span>(<span class="str">'/login'</span>)
+  <span class="kw">await</span> <span class="fn">expect</span>(page.<span class="fn">locator</span>(<span class="str">'form'</span>)).<span class="fn">toBeVisible</span>()
+})
+
+<span class="cm">// Exécution : npx playwright test --grep @smoke</span></pre></div>
+    </div>
+
+    <div class="concept-row">
+      <span class="concept" style="color:var(--smoke);border-color:rgba(251,146,60,0.3)">tags / grep</span>
+      <span class="concept" style="color:var(--smoke);border-color:rgba(251,146,60,0.3)">health check endpoint</span>
+      <span class="concept" style="color:var(--smoke);border-color:rgba(251,146,60,0.3)">post-deploy hook CI/CD</span>
+      <span class="concept" style="color:var(--smoke);border-color:rgba(251,146,60,0.3)">rollback on failure</span>
+      <span class="concept" style="color:var(--smoke);border-color:rgba(251,146,60,0.3)">&lt; 3 min execution</span>
+    </div>
+  </section>
+
+  <div class="divider"></div>
+
+  <!-- ============================================================ -->
+  <!-- STRESS -->
+  <!-- ============================================================ -->
+  <section id="stress" class="test-section s-stress">
+    <div class="section-header">
+      <div>
+        <div class="section-badge" style="background:rgba(248,113,113,0.1);color:var(--stress);border:1px solid rgba(248,113,113,0.3)">Test spécialisé — Performance</div>
+        <div class="section-title" style="color:var(--stress)">Tests de Charge / Stress ⚡</div>
+        <div class="section-scope">Périmètre : infrastructure · API · comportement sous pression</div>
+      </div>
+    </div>
+
+    <div class="cards triple">
+      <div class="card s-stress">
+        <div class="card-head">Test de charge (Load)</div>
+        <div class="card-text">Simule un nombre <em>normal à élevé</em> d'utilisateurs simultanés pour mesurer les performances en conditions réelles.</div>
+        <ul class="card-list" style="margin-top:8px">
+          <li>Mesure : temps de réponse, débit (req/s)</li>
+          <li>Montée progressive en charge</li>
+          <li>Vérifie le respect des SLAs</li>
+        </ul>
+      </div>
+      <div class="card s-stress">
+        <div class="card-head">Test de stress</div>
+        <div class="card-text">Pousse le système <em>au-delà de ses limites</em> pour trouver le point de rupture et observer comment il se comporte.</div>
+        <ul class="card-list" style="margin-top:8px">
+          <li>Charge x5, x10 le nominal</li>
+          <li>Détecte fuites mémoire, deadlocks</li>
+          <li>Vérifie la récupération après pic</li>
+        </ul>
+      </div>
+      <div class="card s-stress">
+        <div class="card-head">Test d'endurance (Soak)</div>
+        <div class="card-text">Charge <em>soutenue dans le temps</em> (heures / jours) pour détecter les dégradations progressives.</div>
+        <ul class="card-list" style="margin-top:8px">
+          <li>Fuites mémoire qui s'accumulent</li>
+          <li>Connexions BDD qui s'épuisent</li>
+          <li>Disque qui se remplit</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="code-block">
+      <div class="code-header">
+        <div class="code-dots"><div class="code-dot"></div><div class="code-dot"></div><div class="code-dot"></div></div>
+        <div class="code-lang">k6 — scénario de charge sur une API</div>
+      </div>
+      <div class="code-body"><pre><span class="kw">import</span> http <span class="kw">from</span> <span class="str">'k6/http'</span>
+<span class="kw">import</span> { <span class="fn">check</span>, sleep } <span class="kw">from</span> <span class="str">'k6'</span>
+
+<span class="kw">export const</span> options = {
+  stages: [
+    { duration: <span class="str">'30s'</span>, target: <span class="num">50</span>  },  <span class="cm">// montée à 50 utilisateurs</span>
+    { duration: <span class="str">'1m'</span>,  target: <span class="num">200</span> },  <span class="cm">// maintien à 200</span>
+    { duration: <span class="str">'20s'</span>, target: <span class="num">0</span>   },  <span class="cm">// descente</span>
+  ],
+  thresholds: {
+    <span class="str">'http_req_duration'</span>: [<span class="str">'p(95)&lt;500'</span>], <span class="cm">// 95% des req < 500ms</span>
+    <span class="str">'http_req_failed'</span>:   [<span class="str">'rate&lt;0.01'</span>], <span class="cm">// moins de 1% d'erreurs</span>
+  }
+}
+
+<span class="kw">export default function</span>() {
+  <span class="kw">const</span> res = http.<span class="fn">get</span>(<span class="str">'https://api.monapp.com/products'</span>)
+
+  <span class="fn">check</span>(res, {
+    <span class="str">'status 200'</span>: (r) =&gt; r.status === <span class="num">200</span>,
+    <span class="str">'body non vide'</span>: (r) =&gt; r.body.length &gt; <span class="num">0</span>,
+  })
+
+  <span class="fn">sleep</span>(<span class="num">1</span>)
+}</pre></div>
+    </div>
+
+    <div class="cards">
+      <div class="card s-stress">
+        <div class="card-head">Métriques clés</div>
+        <ul class="card-list">
+          <li><strong>p95 / p99</strong> — percentile des temps de réponse</li>
+          <li><strong>RPS</strong> — requêtes par seconde</li>
+          <li><strong>Error rate</strong> — taux d'erreurs</li>
+          <li><strong>TTFB</strong> — time to first byte</li>
+          <li>CPU, RAM, connexions BDD (monitoring)</li>
+        </ul>
+      </div>
+      <div class="card s-stress">
+        <div class="card-head">Environnement requis</div>
+        <ul class="card-list">
+          <li>Environnement <em>dédié</em>, jamais la prod</li>
+          <li>Infrastructure identique à la prod</li>
+          <li>Monitoring activé (Grafana, Datadog…)</li>
+          <li>BDD pré-peuplée de données réalistes</li>
+          <li>Isolation réseau (ne pas tester des tiers)</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="concept-row">
+      <span class="concept" style="color:var(--stress);border-color:rgba(248,113,113,0.3)">k6 / Artillery</span>
+      <span class="concept" style="color:var(--stress);border-color:rgba(248,113,113,0.3)">virtual users (VU)</span>
+      <span class="concept" style="color:var(--stress);border-color:rgba(248,113,113,0.3)">stages / ramping</span>
+      <span class="concept" style="color:var(--stress);border-color:rgba(248,113,113,0.3)">thresholds / SLA</span>
+      <span class="concept" style="color:var(--stress);border-color:rgba(248,113,113,0.3)">p95 · p99</span>
+      <span class="concept" style="color:var(--stress);border-color:rgba(248,113,113,0.3)">Grafana / monitoring</span>
+    </div>
+  </section>
+
+  <div class="divider nrt"></div>
+
+  <!-- ============================================================ -->
+  <!-- NRT -->
+  <!-- ============================================================ -->
+  <section id="nrt" class="test-section s-nrt">
+    <div class="section-header">
+      <div>
+        <div class="section-badge" style="background:rgba(251,191,36,0.1);color:var(--nrt);border:1px dashed rgba(251,191,36,0.4)">Stratégie transversale</div>
+        <div class="section-title" style="color:var(--nrt)">Tests de Non-Régression (TNR) 🔄</div>
+        <div class="section-scope">Pas un type de test : une stratégie d'exécution systématique après chaque modification</div>
+      </div>
+    </div>
+
+    <div class="nrt-wrap">
+
+      <div class="cards">
+        <div class="card s-nrt" style="background:rgba(251,191,36,0.05)">
+          <div class="card-head">Le principe</div>
+          <div class="card-text">Après chaque modification du code (feature, bugfix, refacto), on rejoue une suite de tests pour s'assurer que rien de ce qui fonctionnait avant n'est cassé. La TNR n'a pas son propre cadre technique : elle <em>orchestrer</em> les tests existants.</div>
+        </div>
+        <div class="card s-nrt" style="background:rgba(251,191,36,0.05)">
+          <div class="card-head">Quels tests inclure ?</div>
+          <div class="card-text">Le périmètre dépend du <strong>risque</strong> de la modification :</div>
+          <ul class="card-list" style="margin-top:8px">
+            <li>Petite correction → tests unitaires + intégration</li>
+            <li>Nouvelle feature → ajout des tests fonctionnels</li>
+            <li>Refacto majeur → suite complète + E2E</li>
+            <li>Déploiement → smoke test en premier</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="code-block" style="margin-top:14px">
+        <div class="code-header">
+          <div class="code-dots"><div class="code-dot"></div><div class="code-dot"></div><div class="code-dot"></div></div>
+          <div class="code-lang">GitHub Actions — pipeline TNR automatisé</div>
+        </div>
+        <div class="code-body"><pre><span class="cm"># .github/workflows/ci.yml</span>
+<span class="kw">on</span>: [push, pull_request]
+
+<span class="kw">jobs</span>:
+  <span class="cls">regression</span>:
+    <span class="kw">steps</span>:
+      - <span class="kw">name</span>: <span class="str">Tests unitaires</span>
+        <span class="kw">run</span>: <span class="str">npx vitest run</span>
+
+      - <span class="kw">name</span>: <span class="str">Tests d'intégration</span>
+        <span class="kw">run</span>: <span class="str">npx jest --testPathPattern=integration</span>
+
+      - <span class="kw">name</span>: <span class="str">Tests fonctionnels E2E</span>
+        <span class="kw">run</span>: <span class="str">npx playwright test</span>
+
+      - <span class="kw">name</span>: <span class="str">Smoke post-deploy</span>      <span class="cm"># déclenché après merge sur main</span>
+        <span class="kw">run</span>: <span class="str">npx playwright test --grep @smoke</span>
+        <span class="kw">if</span>: github.ref == <span class="str">'refs/heads/main'</span></pre></div>
+      </div>
+
+      <div class="cards" style="margin-top:14px">
+        <div class="card s-nrt" style="background:rgba(251,191,36,0.05)">
+          <div class="card-head">Bonnes pratiques</div>
+          <ul class="card-list">
+            <li>Automatiser dans la CI — jamais manuel</li>
+            <li>Les tests doivent être <strong>déterministes</strong> (pas de flaky tests)</li>
+            <li>Versioner les tests avec le code</li>
+            <li>Toute PR doit faire passer la TNR</li>
+            <li>Surveiller la durée : si trop long → paralléliser</li>
+          </ul>
+        </div>
+        <div class="card s-nrt" style="background:rgba(251,191,36,0.05)">
+          <div class="card-head">TNR ≠ Recette (UAT)</div>
+          <div class="card-text">La TNR est <strong>automatique et technique</strong>. Elle garantit la stabilité interne. La recette (User Acceptance Testing) est <strong>humaine et métier</strong> : le client/PO valide que la feature répond au besoin. Les deux sont complémentaires.</div>
+        </div>
+      </div>
+
+      <div class="concept-row" style="margin-top:16px">
+        <span class="concept" style="color:var(--nrt);border-color:rgba(251,191,36,0.3)">CI/CD pipeline</span>
+        <span class="concept" style="color:var(--nrt);border-color:rgba(251,191,36,0.3)">GitHub Actions / GitLab CI</span>
+        <span class="concept" style="color:var(--nrt);border-color:rgba(251,191,36,0.3)">déterminisme</span>
+        <span class="concept" style="color:var(--nrt);border-color:rgba(251,191,36,0.3)">flaky tests</span>
+        <span class="concept" style="color:var(--nrt);border-color:rgba(251,191,36,0.3)">gating PR</span>
+        <span class="concept" style="color:var(--nrt);border-color:rgba(251,191,36,0.3)">parallélisme</span>
+      </div>
+
+    </div>
+  </section>
+
+</div>
+
+<script>
+  // Active nav pill on scroll
+  const sections = document.querySelectorAll('.test-section')
+  const pills = document.querySelectorAll('.nav-pill')
+
+  const obs = new IntersectionObserver((entries) => {
+    entries.forEach(e => {
+      if (e.isIntersecting) {
+        pills.forEach(p => p.classList.remove('active'))
+        const active = document.querySelector(`.nav-pill[href="#${e.target.id}"]`)
+        if (active) active.classList.add('active')
+      }
+    })
+  }, { threshold: 0.35 })
+
+  sections.forEach(s => obs.observe(s))
+
+  // Smooth scroll
+  document.querySelectorAll('.nav-pill').forEach(pill => {
+    pill.addEventListener('click', e => {
+      e.preventDefault()
+      document.querySelector(pill.getAttribute('href')).scrollIntoView({ behavior: 'smooth' })
+    })
+  })
+</script>
+</body>
+</html>

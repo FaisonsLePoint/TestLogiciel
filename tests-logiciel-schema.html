@@ -1,0 +1,758 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pyramide des Tests Logiciel</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Syne:wght@400;700;800&display=swap');
+
+  :root {
+    --bg: #0a0e1a;
+    --surface: #111827;
+    --border: #1e2d40;
+    --unit: #22d3ee;
+    --integration: #34d399;
+    --functional: #a78bfa;
+    --e2e: #f472b6;
+    --smoke: #fb923c;
+    --stress: #f87171;
+    --nrt: #fbbf24;
+    --text: #e2e8f0;
+    --muted: #64748b;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Syne', sans-serif;
+    min-height: 100vh;
+    padding: 40px 20px;
+    overflow-x: hidden;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(ellipse at 30% 20%, rgba(34,211,238,0.04) 0%, transparent 50%),
+                radial-gradient(ellipse at 70% 80%, rgba(167,139,250,0.04) 0%, transparent 50%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .container {
+    max-width: 1100px;
+    margin: 0 auto;
+    position: relative;
+    z-index: 1;
+  }
+
+  header {
+    text-align: center;
+    margin-bottom: 60px;
+    animation: fadeDown 0.6s ease both;
+  }
+
+  header h1 {
+    font-size: clamp(2rem, 5vw, 3.5rem);
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    background: linear-gradient(135deg, var(--unit) 0%, var(--functional) 50%, var(--e2e) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    line-height: 1.1;
+  }
+
+  header p {
+    margin-top: 12px;
+    color: var(--muted);
+    font-size: 1rem;
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  /* ---- PYRAMID ---- */
+  .pyramid-section {
+    margin-bottom: 50px;
+    animation: fadeUp 0.7s ease 0.2s both;
+  }
+
+  .section-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.7rem;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    margin-bottom: 16px;
+  }
+
+  .pyramid {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .pyramid-row {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: transform 0.2s;
+  }
+
+  .pyramid-row:hover { transform: scale(1.02); }
+  .pyramid-row:hover .pyramid-block { filter: brightness(1.15); }
+
+  .pyramid-block {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    border-radius: 10px;
+    padding: 14px 24px;
+    border: 1px solid rgba(255,255,255,0.08);
+    transition: all 0.3s;
+    position: relative;
+    overflow: hidden;
+    gap: 4px;
+  }
+
+  .pyramid-block::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    opacity: 0.08;
+  }
+
+  .pyramid-block.unit     { width: 260px; background: rgba(34,211,238,0.12); border-color: rgba(34,211,238,0.3); }
+  .pyramid-block.integration { width: 380px; background: rgba(52,211,153,0.10); border-color: rgba(52,211,153,0.3); }
+  .pyramid-block.functional  { width: 500px; background: rgba(167,139,250,0.10); border-color: rgba(167,139,250,0.3); }
+  .pyramid-block.e2e         { width: 620px; background: rgba(244,114,182,0.10); border-color: rgba(244,114,182,0.3); }
+
+  .block-title {
+    font-size: 1rem;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+  }
+  .block-sub {
+    font-size: 0.72rem;
+    font-family: 'JetBrains Mono', monospace;
+    opacity: 0.7;
+  }
+
+  .unit .block-title     { color: var(--unit); }
+  .integration .block-title { color: var(--integration); }
+  .functional .block-title  { color: var(--functional); }
+  .e2e .block-title         { color: var(--e2e); }
+
+  .pyramid-annotations {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 12px;
+    padding: 0 10px;
+  }
+
+  .annotation {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.68rem;
+    color: var(--muted);
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+
+  .arrow-up::before   { content: '↑'; }
+  .arrow-down::before { content: '↓'; }
+
+  /* ---- SPECIAL TESTS GRID ---- */
+  .special-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 50px;
+    animation: fadeUp 0.7s ease 0.4s both;
+  }
+
+  .special-card {
+    border-radius: 12px;
+    padding: 20px;
+    border: 1px solid rgba(255,255,255,0.07);
+    cursor: pointer;
+    transition: transform 0.2s, filter 0.2s;
+  }
+  .special-card:hover { transform: translateY(-3px); filter: brightness(1.1); }
+
+  .card-smoke  { background: rgba(251,146,60,0.10);  border-color: rgba(251,146,60,0.3); }
+  .card-stress { background: rgba(248,113,113,0.10); border-color: rgba(248,113,113,0.3); }
+
+  .card-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+  }
+
+  .card-icon {
+    width: 36px; height: 36px;
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.2rem;
+  }
+
+  .card-smoke  .card-icon { background: rgba(251,146,60,0.2); }
+  .card-stress .card-icon { background: rgba(248,113,113,0.2); }
+
+  .card-title {
+    font-size: 1rem;
+    font-weight: 700;
+  }
+
+  .card-smoke  .card-title { color: var(--smoke); }
+  .card-stress .card-title { color: var(--stress); }
+
+  .card-desc {
+    font-size: 0.82rem;
+    color: var(--muted);
+    line-height: 1.6;
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  .card-tags {
+    display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px;
+  }
+
+  .tag {
+    font-size: 0.65rem;
+    font-family: 'JetBrains Mono', monospace;
+    padding: 3px 8px;
+    border-radius: 4px;
+    background: rgba(255,255,255,0.06);
+    color: var(--muted);
+  }
+
+  /* ---- NRT BAND ---- */
+  .nrt-section {
+    animation: fadeUp 0.7s ease 0.6s both;
+  }
+
+  .nrt-card {
+    border-radius: 12px;
+    padding: 24px 28px;
+    background: rgba(251,191,36,0.07);
+    border: 1px dashed rgba(251,191,36,0.4);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .nrt-card::after {
+    content: 'STRATÉGIE';
+    position: absolute;
+    top: 20px; right: 20px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.6rem;
+    letter-spacing: 0.2em;
+    color: var(--nrt);
+    opacity: 0.6;
+    background: rgba(251,191,36,0.1);
+    padding: 3px 8px;
+    border-radius: 4px;
+    border: 1px solid rgba(251,191,36,0.3);
+  }
+
+  .nrt-header {
+    display: flex; align-items: center; gap: 12px; margin-bottom: 14px;
+  }
+
+  .nrt-title {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--nrt);
+  }
+
+  .nrt-desc {
+    font-size: 0.83rem;
+    color: #94a3b8;
+    line-height: 1.7;
+    font-family: 'JetBrains Mono', monospace;
+    margin-bottom: 16px;
+  }
+
+  .nrt-includes {
+    display: flex; flex-wrap: wrap; gap: 8px;
+  }
+
+  .nrt-badge {
+    font-size: 0.7rem;
+    font-family: 'JetBrains Mono', monospace;
+    padding: 5px 12px;
+    border-radius: 6px;
+    border: 1px solid;
+    display: flex; align-items: center; gap: 5px;
+  }
+
+  .nrt-badge.unit        { color: var(--unit);        border-color: rgba(34,211,238,0.4);   background: rgba(34,211,238,0.08); }
+  .nrt-badge.integration { color: var(--integration); border-color: rgba(52,211,153,0.4);   background: rgba(52,211,153,0.08); }
+  .nrt-badge.functional  { color: var(--functional);  border-color: rgba(167,139,250,0.4);  background: rgba(167,139,250,0.08); }
+  .nrt-badge.e2e         { color: var(--e2e);         border-color: rgba(244,114,182,0.4);  background: rgba(244,114,182,0.08); }
+  .nrt-badge.smoke       { color: var(--smoke);       border-color: rgba(251,146,60,0.4);   background: rgba(251,146,60,0.08); }
+
+  /* ---- DETAIL PANEL ---- */
+  .detail-panel {
+    position: fixed;
+    top: 0; right: -420px;
+    width: 400px;
+    height: 100vh;
+    background: #0d1526;
+    border-left: 1px solid var(--border);
+    padding: 40px 28px;
+    transition: right 0.35s cubic-bezier(0.4,0,0.2,1);
+    z-index: 100;
+    overflow-y: auto;
+  }
+
+  .detail-panel.open { right: 0; }
+
+  .panel-close {
+    position: absolute;
+    top: 16px; right: 16px;
+    background: rgba(255,255,255,0.06);
+    border: none;
+    color: var(--muted);
+    width: 32px; height: 32px;
+    border-radius: 8px;
+    font-size: 1rem;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: background 0.2s;
+  }
+  .panel-close:hover { background: rgba(255,255,255,0.12); }
+
+  .panel-type {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.65rem;
+    letter-spacing: 0.15em;
+    color: var(--muted);
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+
+  .panel-title {
+    font-size: 1.8rem;
+    font-weight: 800;
+    margin-bottom: 6px;
+  }
+
+  .panel-scope {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.75rem;
+    color: var(--muted);
+    margin-bottom: 24px;
+    padding-bottom: 24px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .panel-section-title {
+    font-size: 0.72rem;
+    font-family: 'JetBrains Mono', monospace;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-bottom: 10px;
+    margin-top: 20px;
+  }
+
+  .panel-desc {
+    font-size: 0.87rem;
+    line-height: 1.7;
+    color: #94a3b8;
+    margin-bottom: 8px;
+  }
+
+  .panel-list {
+    list-style: none;
+    display: flex; flex-direction: column; gap: 6px;
+  }
+
+  .panel-list li {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.77rem;
+    color: #94a3b8;
+    padding-left: 14px;
+    position: relative;
+    line-height: 1.5;
+  }
+
+  .panel-list li::before {
+    content: '→';
+    position: absolute;
+    left: 0;
+  }
+
+  .panel-tools {
+    display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px;
+  }
+
+  .tool-tag {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.7rem;
+    padding: 4px 10px;
+    border-radius: 5px;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.1);
+    color: var(--text);
+  }
+
+  /* ---- LEGEND ---- */
+  .legend {
+    margin-top: 50px;
+    padding-top: 30px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    gap: 24px;
+    flex-wrap: wrap;
+    animation: fadeUp 0.7s ease 0.8s both;
+  }
+
+  .legend-item {
+    display: flex; align-items: center; gap: 8px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.7rem;
+    color: var(--muted);
+  }
+
+  .legend-dot {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+  }
+
+  @keyframes fadeDown {
+    from { opacity: 0; transform: translateY(-20px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .click-hint {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.65rem;
+    color: var(--muted);
+    text-align: center;
+    margin-top: 8px;
+    opacity: 0.6;
+  }
+
+  @media (max-width: 640px) {
+    .pyramid-block.e2e { width: 100%; }
+    .pyramid-block.functional { width: calc(100% - 40px); }
+    .pyramid-block.integration { width: calc(100% - 80px); }
+    .pyramid-block.unit { width: calc(100% - 120px); }
+    .special-grid { grid-template-columns: 1fr; }
+    .detail-panel { width: 100%; right: -100%; }
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+
+  <header>
+    <h1>Tests Logiciel</h1>
+    <p>// cartographie & stratégie — cliquez sur un bloc pour les détails</p>
+  </header>
+
+  <!-- PYRAMID -->
+  <div class="pyramid-section">
+    <div class="section-label">// pyramide des tests — coût & isolation</div>
+    <div class="pyramid">
+
+      <div class="pyramid-row" onclick="openPanel('unit')">
+        <div class="pyramid-block unit">
+          <span class="block-title">Tests Unitaires</span>
+          <span class="block-sub">jest · vitest · mocha</span>
+        </div>
+      </div>
+
+      <div class="pyramid-row" onclick="openPanel('integration')">
+        <div class="pyramid-block integration">
+          <span class="block-title">Tests d'Intégration</span>
+          <span class="block-sub">jest · supertest · testing-library</span>
+        </div>
+      </div>
+
+      <div class="pyramid-row" onclick="openPanel('functional')">
+        <div class="pyramid-block functional">
+          <span class="block-title">Tests Fonctionnels</span>
+          <span class="block-sub">jest · playwright · cypress</span>
+        </div>
+      </div>
+
+      <div class="pyramid-row" onclick="openPanel('e2e')">
+        <div class="pyramid-block e2e">
+          <span class="block-title">Tests End-to-End (E2E)</span>
+          <span class="block-sub">playwright · cypress · selenium</span>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="pyramid-annotations">
+      <div class="annotation"><span class="arrow-up"></span> Rapide · Isolé · Nombreux · Peu coûteux</div>
+      <div class="annotation">Lent · Réaliste · Coûteux · Fragile <span class="arrow-down"></span></div>
+    </div>
+    <div class="click-hint">▸ cliquer sur un bloc pour les détails</div>
+  </div>
+
+  <!-- SPECIAL TESTS -->
+  <div class="special-grid">
+
+    <div class="special-card card-smoke" onclick="openPanel('smoke')">
+      <div class="card-header">
+        <div class="card-icon">🔥</div>
+        <div class="card-title">Tests Smoke</div>
+      </div>
+      <div class="card-desc">Vérification rapide que l'application "tient debout" après un déploiement. Sous-ensemble minimal de tests critiques.</div>
+      <div class="card-tags">
+        <span class="tag">post-deploy</span>
+        <span class="tag">rapide</span>
+        <span class="tag">go/no-go</span>
+      </div>
+    </div>
+
+    <div class="special-card card-stress" onclick="openPanel('stress')">
+      <div class="card-header">
+        <div class="card-icon">⚡</div>
+        <div class="card-title">Tests de Charge / Stress</div>
+      </div>
+      <div class="card-desc">Évalue la performance et la robustesse sous pression. Mesure les limites du système avec k6, Artillery, JMeter.</div>
+      <div class="card-tags">
+        <span class="tag">performance</span>
+        <span class="tag">scalabilité</span>
+        <span class="tag">limites</span>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- NON REGRESSION -->
+  <div class="nrt-section">
+    <div class="section-label">// approche transversale</div>
+    <div class="nrt-card" onclick="openPanel('nrt')">
+      <div class="nrt-header">
+        <div class="nrt-title">🔄 Tests de Non-Régression (TNR)</div>
+      </div>
+      <div class="nrt-desc">
+        Pas un type de test à part entière, mais une <strong style="color: var(--nrt)">stratégie d'exécution</strong>. 
+        Il s'agit de rejouer une suite de tests existants après chaque modification pour garantir qu'aucune régression n'a été introduite.
+        Les TNR peuvent être composés de n'importe quel type de test ci-dessus.
+      </div>
+      <div class="nrt-includes">
+        <span class="nrt-badge unit">● Unitaires</span>
+        <span class="nrt-badge integration">● Intégration</span>
+        <span class="nrt-badge functional">● Fonctionnels</span>
+        <span class="nrt-badge e2e">● E2E</span>
+        <span class="nrt-badge smoke">● Smoke</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- LEGEND -->
+  <div class="legend">
+    <div class="legend-item"><div class="legend-dot" style="background:var(--unit)"></div>Tests Unitaires</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--integration)"></div>Intégration</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--functional)"></div>Fonctionnels</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--e2e)"></div>E2E</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--smoke)"></div>Smoke</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--stress)"></div>Stress</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--nrt); border-radius:2px;"></div>TNR (stratégie)</div>
+  </div>
+
+</div>
+
+<!-- DETAIL PANEL -->
+<div class="detail-panel" id="panel">
+  <button class="panel-close" onclick="closePanel()">✕</button>
+  <div id="panel-content"></div>
+</div>
+
+<script>
+const data = {
+  unit: {
+    color: '#22d3ee',
+    type: 'Pyramide — Base',
+    title: 'Tests Unitaires',
+    scope: 'Périmètre : fonction · méthode · classe isolée',
+    desc: 'Testent la plus petite unité de code possible, en isolation totale. Les dépendances sont remplacées par des mocks ou stubs.',
+    objectifs: [
+      'Vérifier la logique interne d\'une fonction',
+      'Couvrir les cas limites (edge cases)',
+      'Documenter le comportement attendu',
+      'Détecter les régressions au plus tôt',
+    ],
+    caracteristiques: [
+      'Très rapides (ms)',
+      'Nombreux (70-80% de la pyramide)',
+      'Facilement automatisables en CI',
+      'Indépendants les uns des autres',
+    ],
+    tools: ['Jest', 'Vitest', 'Mocha', 'Jasmine'],
+  },
+  integration: {
+    color: '#34d399',
+    type: 'Pyramide — Milieu',
+    title: 'Tests d\'Intégration',
+    scope: 'Périmètre : plusieurs modules · services · API · BDD',
+    desc: 'Vérifient que plusieurs composants fonctionnent correctement ensemble. On teste les contrats entre les modules.',
+    objectifs: [
+      'Vérifier les échanges entre modules',
+      'Tester les appels API réels ou semi-réels',
+      'Valider les requêtes base de données',
+      'Détecter les problèmes de compatibilité',
+    ],
+    caracteristiques: [
+      'Plus lents que les tests unitaires',
+      'Nécessitent un environnement partiel',
+      'Peuvent utiliser une BDD de test',
+      'Moins nombreux que les tests unitaires',
+    ],
+    tools: ['Jest + Supertest', 'Vitest', 'Testing Library', 'MSW'],
+  },
+  functional: {
+    color: '#a78bfa',
+    type: 'Pyramide — Haut',
+    title: 'Tests Fonctionnels',
+    scope: 'Périmètre : fonctionnalité métier complète, côté utilisateur',
+    desc: 'Valident qu\'une fonctionnalité répond bien aux exigences métier, du point de vue de l\'utilisateur. Peuvent être UI ou API.',
+    objectifs: [
+      'Vérifier les scénarios métier clés',
+      'Valider les règles de gestion',
+      'Tester les parcours utilisateur principaux',
+      'S\'assurer de la conformité aux specs',
+    ],
+    caracteristiques: [
+      'Orientés comportement utilisateur',
+      'Indépendants de l\'implémentation technique',
+      'Souvent liés aux user stories / BDD',
+      'Peuvent être automatisés ou manuels',
+    ],
+    tools: ['Playwright', 'Cypress', 'Jest', 'Cucumber (BDD)'],
+  },
+  e2e: {
+    color: '#f472b6',
+    type: 'Pyramide — Sommet',
+    title: 'Tests End-to-End',
+    scope: 'Périmètre : application entière, du navigateur au serveur',
+    desc: 'Simulent un vrai utilisateur interagissant avec l\'application complète dans un environnement proche de la production.',
+    objectifs: [
+      'Valider les parcours complets utilisateur',
+      'Tester l\'intégration de tous les systèmes',
+      'Reproduire des scénarios réels',
+      'Filet de sécurité avant la production',
+    ],
+    caracteristiques: [
+      'Lents (secondes à minutes par test)',
+      'Fragiles (sensibles aux changements UI)',
+      'Coûteux à maintenir',
+      'Peu nombreux mais à haute valeur',
+    ],
+    tools: ['Playwright', 'Cypress', 'Selenium', 'Puppeteer'],
+  },
+  smoke: {
+    color: '#fb923c',
+    type: 'Test spécialisé',
+    title: 'Tests Smoke',
+    scope: 'Périmètre : fonctions vitales de l\'application',
+    desc: 'Tests minimaux exécutés immédiatement après un déploiement pour vérifier que les fonctions les plus critiques sont opérationnelles. Terme issu de l\'électronique : "est-ce que ça fume quand on allume ?"',
+    objectifs: [
+      'Décision rapide go/no-go après un déploiement',
+      'Vérifier que l\'application démarre',
+      'Valider les endpoints critiques',
+      'Éviter de polluer les environnements de test',
+    ],
+    caracteristiques: [
+      'Très rapides à exécuter',
+      'Sous-ensemble de tests existants',
+      'Exécutés en CI/CD post-deploy',
+      'Binaire : passe ou ne passe pas',
+    ],
+    tools: ['Playwright', 'Cypress', 'k6', 'curl/scripts shell'],
+  },
+  stress: {
+    color: '#f87171',
+    type: 'Test spécialisé — Performance',
+    title: 'Tests de Charge / Stress',
+    scope: 'Périmètre : infrastructure · API · système complet',
+    desc: 'Évaluent le comportement du système sous une charge importante ou extrême pour identifier les goulots d\'étranglement et les points de rupture.',
+    objectifs: [
+      'Identifier les limites du système',
+      'Mesurer les temps de réponse sous charge',
+      'Détecter les fuites mémoire / connexions',
+      'Valider les SLAs (accords de niveau de service)',
+    ],
+    caracteristiques: [
+      'Tests de charge : montée progressive',
+      'Tests de stress : dépassement des limites',
+      'Tests d\'endurance : charge soutenue dans le temps',
+      'Nécessitent un environnement dédié',
+    ],
+    tools: ['k6', 'Artillery', 'JMeter', 'Gatling', 'Locust'],
+  },
+  nrt: {
+    color: '#fbbf24',
+    type: 'Stratégie transversale',
+    title: 'Tests de Non-Régression',
+    scope: 'Périmètre : toute la suite de tests existants',
+    desc: 'Les TNR ne sont pas un type de test mais une approche stratégique : rejouer tout ou partie des tests existants après chaque modification du code, pour s\'assurer qu\'une nouveauté n\'a pas cassé ce qui fonctionnait.',
+    objectifs: [
+      'Garantir la stabilité du logiciel dans le temps',
+      'Détecter les effets de bord des modifications',
+      'Maintenir la confiance dans le code',
+      'Base essentielle d\'une CI/CD fiable',
+    ],
+    caracteristiques: [
+      'Peut inclure unitaires, intégration, fonctionnels, E2E',
+      'Souvent automatisés et déclenchés sur chaque PR',
+      'Le périmètre s\'adapte au risque de la modification',
+      'Différent des tests de recette (UAT)',
+    ],
+    tools: ['GitHub Actions', 'GitLab CI', 'Jenkins', '+ tous les frameworks de test'],
+  },
+};
+
+function openPanel(key) {
+  const d = data[key];
+  const panel = document.getElementById('panel');
+  document.getElementById('panel-content').innerHTML = `
+    <div class="panel-type">${d.type}</div>
+    <div class="panel-title" style="color:${d.color}">${d.title}</div>
+    <div class="panel-scope">${d.scope}</div>
+    <div class="panel-section-title">Description</div>
+    <div class="panel-desc">${d.desc}</div>
+    <div class="panel-section-title">Objectifs</div>
+    <ul class="panel-list">${d.objectifs.map(o => `<li>${o}</li>`).join('')}</ul>
+    <div class="panel-section-title">Caractéristiques</div>
+    <ul class="panel-list">${d.caracteristiques.map(c => `<li>${c}</li>`).join('')}</ul>
+    <div class="panel-section-title">Outils / Librairies</div>
+    <div class="panel-tools">${d.tools.map(t => `<span class="tool-tag">${t}</span>`).join('')}</div>
+  `;
+  panel.classList.add('open');
+}
+
+function closePanel() {
+  document.getElementById('panel').classList.remove('open');
+}
+
+document.addEventListener('keydown', e => { if(e.key === 'Escape') closePanel(); });
+</script>
+</body>
+</html>
