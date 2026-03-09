@@ -1,0 +1,33 @@
+name: cocktail-app-local-bdd
+services:
+  cocktail_bdd:
+    container_name: cocktail_bdd
+    image: mariadb:12.1.2
+    volumes:
+      - ./mysql:/var/lib/mysql
+    ports:
+      - 3306:3306
+    environment:
+      MARIADB_ROOT_PASSWORD: toor
+      MARIADB_DATABASE: bddname
+      MARIADB_USER: roger
+      MARIADB_PASSWORD: regor
+    healthcheck:
+      test: ['CMD', '/usr/local/bin/healthcheck.sh', '--innodb_initialized']
+      start_period: 5s
+      interval: 10s
+      timeout: 10s
+      retries: 5
+    networks:
+      - cocktail-network-local
+
+  cocktail_adminer:
+    container_name: cocktail_adminer
+    image: adminer
+    ports:
+      - 8080:8080
+    networks:
+      - cocktail-network-local
+
+networks:
+  cocktail-network-local:
