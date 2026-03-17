@@ -53,9 +53,6 @@ describe("Hash User Model", () => {
         await User._hooks['beforeCreate'](user1, {})
         await User._hooks['beforeCreate'](user2, {})
 
-        console.log(user1.password)
-        console.log(user2.password)
-
         expect(user1.password).not.toBe(user2.password)
 
         expect(await User.checkPassword(plainPassword, user1.password)).toBe(true)

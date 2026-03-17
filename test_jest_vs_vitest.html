@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Jest vs Vitest</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Syne:wght@400;700;800&display=swap');
+
+    :root {
+      --bg:       #0a0e1a;
+      --surface:  #111827;
+      --border:   #1e2d40;
+      --text:     #e2e8f0;
+      --muted:    #64748b;
+      --code-bg:  #060d1a;
+      --jest:     #fb923c;
+      --vitest:   #34d399;
+      --neutral:  #94a3b8;
+      --equal:    #60a5fa;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Syne', sans-serif;
+      min-height: 100vh;
+      padding: 40px 20px 80px;
+    }
+
+    body::before {
+      content: '';
+      position: fixed; top: -50%; left: -50%;
+      width: 200%; height: 200%;
+      background:
+        radial-gradient(ellipse at 20% 20%, rgba(251,146,60,0.04) 0%, transparent 50%),
+        radial-gradient(ellipse at 80% 80%, rgba(52,211,153,0.04) 0%, transparent 50%);
+      pointer-events: none; z-index: 0;
+    }
+
+    .container { max-width: 760px; margin: 0 auto; position: relative; z-index: 1; }
+
+    /* ── HEADER ── */
+    header {
+      text-align: center; margin-bottom: 40px;
+      animation: fadeDown .6s ease both;
+    }
+
+    .app-tag {
+      display: inline-flex; align-items: center; gap: 8px;
+      font-family: 'JetBrains Mono', monospace; font-size: 0.68rem;
+      color: var(--muted); border: 1px solid var(--border);
+      padding: 5px 16px; border-radius: 20px; margin-bottom: 18px;
+      letter-spacing: 0.1em;
+    }
+    .app-tag em { color: var(--jest); font-style: normal; }
+    .app-tag span { color: var(--vitest); }
+
+    h1 {
+      font-size: clamp(1.8rem, 4vw, 2.6rem); font-weight: 800;
+      letter-spacing: -0.02em; line-height: 1.1; margin-bottom: 10px;
+      background: linear-gradient(135deg, var(--jest) 0%, var(--vitest) 100%);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+    }
+
+    header p {
+      color: var(--muted); font-size: 0.78rem;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    /* ── TABLE ── */
+    .table-wrap {
+      border-radius: 12px; overflow: hidden;
+      border: 1px solid var(--border);
+      animation: fadeUp .5s ease .1s both;
+    }
+
+    table { width: 100%; border-collapse: collapse; }
+
+    thead tr {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+    }
+
+    thead th {
+      padding: 14px 20px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.65rem; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.12em;
+      color: var(--muted);
+      text-align: left;
+    }
+
+    thead th:not(:first-child) { text-align: center; }
+
+    .th-jest  { color: var(--jest)   !important; }
+    .th-vitest{ color: var(--vitest) !important; }
+
+    .th-badge {
+      display: inline-block;
+      padding: 3px 12px; border-radius: 99px;
+      font-size: 0.65rem; font-weight: 700; letter-spacing: .1em;
+    }
+    .badge-jest   { background: rgba(251,146,60,.12); color: var(--jest);   border: 1px solid rgba(251,146,60,.3); }
+    .badge-vitest { background: rgba(52,211,153,.10); color: var(--vitest); border: 1px solid rgba(52,211,153,.3); }
+
+    tbody tr {
+      border-bottom: 1px solid var(--border);
+      transition: background .15s;
+    }
+    tbody tr:last-child { border-bottom: none; }
+    tbody tr:hover { background: rgba(255,255,255,0.02); }
+    tbody tr:nth-child(odd) { background: rgba(255,255,255,0.01); }
+    tbody tr:nth-child(odd):hover { background: rgba(255,255,255,0.03); }
+
+    td {
+      padding: 13px 20px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.75rem; vertical-align: middle;
+    }
+
+    td:first-child {
+      font-weight: 700; color: var(--text);
+      font-size: 0.78rem;
+      border-right: 1px solid var(--border);
+    }
+
+    td:not(:first-child) { text-align: center; }
+
+    /* ── PILLS ── */
+    .pill {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 4px 11px; border-radius: 99px;
+      font-size: 0.68rem; font-weight: 700;
+      font-family: 'JetBrains Mono', monospace;
+      white-space: nowrap;
+    }
+
+    .pill-green  { background: rgba(52,211,153,.1);  color: #34d399; border: 1px solid rgba(52,211,153,.3); }
+    .pill-amber  { background: rgba(251,146,60,.1);  color: #fb923c; border: 1px solid rgba(251,146,60,.3); }
+    .pill-blue   { background: rgba(96,165,250,.1);  color: #60a5fa; border: 1px solid rgba(96,165,250,.3); }
+    .pill-gray   { background: rgba(148,163,184,.08);color: #94a3b8; border: 1px solid rgba(148,163,184,.2); }
+
+    .dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+    .dot-green { background: #34d399; }
+    .dot-amber { background: #fb923c; }
+    .dot-blue  { background: #60a5fa; }
+    .dot-gray  { background: #94a3b8; }
+
+    .dash { color: var(--muted); font-size: 1rem; }
+
+    /* ── FOOTER NOTE ── */
+    .note {
+      margin-top: 20px;
+      padding: 14px 18px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: var(--surface);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.7rem; color: var(--muted); line-height: 1.7;
+      animation: fadeUp .5s ease .2s both;
+    }
+    .note strong { color: var(--text); }
+
+    @keyframes fadeDown { from { opacity:0; transform:translateY(-16px); } to { opacity:1; transform:translateY(0); } }
+    @keyframes fadeUp   { from { opacity:0; transform:translateY(18px);  } to { opacity:1; transform:translateY(0); } }
+  </style>
+</head>
+<body>
+<div class="container">
+
+  <header>
+    <div class="app-tag">🍹 <em>Jest</em> &nbsp;vs&nbsp; <span>Vitest</span> &nbsp;·&nbsp; comparatif runners</div>
+    <h1>Le verdict</h1>
+    <p>// quel runner choisir selon ton contexte</p>
+  </header>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Contexte</th>
+          <th><span class="th-badge badge-jest">Jest</span></th>
+          <th><span class="th-badge badge-vitest">Vitest</span></th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Projet Vite / frontend</td>
+          <td><span class="pill pill-amber"><span class="dot dot-amber"></span>Friction</span></td>
+          <td><span class="pill pill-green"><span class="dot dot-green"></span>Natif</span></td>
+        </tr>
+        <tr>
+          <td>Backend Node pur</td>
+          <td><span class="pill pill-green"><span class="dot dot-green"></span>Natif</span></td>
+          <td><span class="pill pill-gray"><span class="dot dot-gray"></span>Sans gain majeur</span></td>
+        </tr>
+        <tr>
+          <td>Tests CPU-intensifs</td>
+          <td><span class="pill pill-gray"><span class="dot dot-gray"></span>Correct</span></td>
+          <td><span class="pill pill-green"><span class="dot dot-green"></span>Plus rapide</span></td>
+        </tr>
+        <tr>
+          <td>Tests I/O — API, DB</td>
+          <td><span class="pill pill-blue"><span class="dot dot-blue"></span>Équivalent</span></td>
+          <td><span class="pill pill-blue"><span class="dot dot-blue"></span>Équivalent</span></td>
+        </tr>
+        <tr>
+          <td>Migration depuis Jest</td>
+          <td><span class="dash">—</span></td>
+          <td><span class="pill pill-green"><span class="dot dot-green"></span>Très facile</span></td>
+        </tr>
+        <tr>
+          <td>Maturité</td>
+          <td><span class="pill pill-green"><span class="dot dot-green"></span>Élevée</span></td>
+          <td><span class="pill pill-amber"><span class="dot dot-amber"></span>Bonne, plus récente</span></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="note">
+    💡 Pour un <strong>backend Node pur + Supertest</strong>, reste sur Jest — aucun gain concret à migrer.
+    Pour un projet <strong>full-stack avec Vite</strong> ou un départ from scratch, Vitest est le meilleur choix aujourd'hui.
+  </div>
+
+</div>
+</body>
+</html>
