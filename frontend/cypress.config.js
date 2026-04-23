@@ -9,6 +9,13 @@ import coverageTask from '@cypress/code-coverage/task'
 export default defineConfig({
   video: true,
   allowCypressEnv: false,
+  reporter: 'mochawesome',
+  reporterOptions: {
+    reportDir: 'cypress/reports',
+    overwrite: false,
+    html: false,      // on génère le HTML après la fusion
+    json: true,       // on collecte du JSON par spec
+  },
   e2e: {
     baseUrl: "http://localhost:5173",
     setupNodeEvents(on, config) {
