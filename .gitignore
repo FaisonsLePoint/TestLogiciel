@@ -10,3 +10,5 @@ frontend/coverage
 frontend/cypress/videos
 frontend/cypress/screenshots
 frontend/cypress/reports
+
+frontend/playwright/reports

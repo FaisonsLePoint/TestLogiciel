@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cypress vs Playwright</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Syne:wght@400;700;800&display=swap');
+
+    :root {
+      --bg:       #0a0e1a;
+      --surface:  #111827;
+      --border:   #1e2d40;
+      --text:     #e2e8f0;
+      --muted:    #64748b;
+      --code-bg:  #060d1a;
+      --cypress:  #34d399;
+      --playwright: #60a5fa;
+      --neutral:  #94a3b8;
+      --equal:    #a78bfa;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Syne', sans-serif;
+      min-height: 100vh;
+      padding: 40px 20px 80px;
+    }
+
+    body::before {
+      content: '';
+      position: fixed; top: -50%; left: -50%;
+      width: 200%; height: 200%;
+      background:
+        radial-gradient(ellipse at 20% 20%, rgba(52,211,153,0.04) 0%, transparent 50%),
+        radial-gradient(ellipse at 80% 80%, rgba(96,165,250,0.04) 0%, transparent 50%);
+      pointer-events: none; z-index: 0;
+    }
+
+    .container { max-width: 760px; margin: 0 auto; position: relative; z-index: 1; }
+
+    header {
+      text-align: center; margin-bottom: 40px;
+      animation: fadeDown .6s ease both;
+    }
+
+    .app-tag {
+      display: inline-flex; align-items: center; gap: 8px;
+      font-family: 'JetBrains Mono', monospace; font-size: 0.68rem;
+      color: var(--muted); border: 1px solid var(--border);
+      padding: 5px 16px; border-radius: 20px; margin-bottom: 18px;
+      letter-spacing: 0.1em;
+    }
+    .app-tag em { color: var(--cypress); font-style: normal; }
+    .app-tag span { color: var(--playwright); }
+
+    h1 {
+      font-size: clamp(1.8rem, 4vw, 2.6rem); font-weight: 800;
+      letter-spacing: -0.02em; line-height: 1.1; margin-bottom: 10px;
+      background: linear-gradient(135deg, var(--cypress) 0%, var(--playwright) 100%);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+    }
+
+    header p {
+      color: var(--muted); font-size: 0.78rem;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .table-wrap {
+      border-radius: 12px; overflow: hidden;
+      border: 1px solid var(--border);
+      animation: fadeUp .5s ease .1s both;
+    }
+
+    table { width: 100%; border-collapse: collapse; }
+
+    thead tr {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+    }
+
+    thead th {
+      padding: 14px 20px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.65rem; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.12em;
+      color: var(--muted);
+      text-align: left;
+    }
+
+    thead th:not(:first-child) { text-align: center; }
+
+    .th-badge {
+      display: inline-block;
+      padding: 3px 12px; border-radius: 99px;
+      font-size: 0.65rem; font-weight: 700; letter-spacing: .1em;
+    }
+    .badge-cypress    { background: rgba(52,211,153,.12); color: var(--cypress);    border: 1px solid rgba(52,211,153,.3); }
+    .badge-playwright { background: rgba(96,165,250,.10); color: var(--playwright); border: 1px solid rgba(96,165,250,.3); }
+
+    tbody tr {
+      border-bottom: 1px solid var(--border);
+      transition: background .15s;
+    }
+    tbody tr:last-child { border-bottom: none; }
+    tbody tr:hover { background: rgba(255,255,255,0.02); }
+    tbody tr:nth-child(odd) { background: rgba(255,255,255,0.01); }
+    tbody tr:nth-child(odd):hover { background: rgba(255,255,255,0.03); }
+
+    td {
+      padding: 13px 20px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.75rem; vertical-align: middle;
+    }
+
+    td:first-child {
+      font-weight: 700; color: var(--text);
+      font-size: 0.78rem;
+      border-right: 1px solid var(--border);
+    }
+
+    td:not(:first-child) { text-align: center; }
+
+    .pill {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 4px 11px; border-radius: 99px;
+      font-size: 0.68rem; font-weight: 700;
+      font-family: 'JetBrains Mono', monospace;
+      white-space: nowrap;
+    }
+
+    .pill-green  { background: rgba(52,211,153,.1);  color: #34d399; border: 1px solid rgba(52,211,153,.3); }
+    .pill-amber  { background: rgba(251,146,60,.1);  color: #fb923c; border: 1px solid rgba(251,146,60,.3); }
+    .pill-blue   { background: rgba(96,165,250,.1);  color: #60a5fa; border: 1px solid rgba(96,165,250,.3); }
+    .pill-gray   { background: rgba(148,163,184,.08);color: #94a3b8; border: 1px solid rgba(148,163,184,.2); }
+
+    .dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+    .dot-green { background: #34d399; }
+    .dot-amber { background: #fb923c; }
+    .dot-blue  { background: #60a5fa; }
+    .dot-gray  { background: #94a3b8; }
+
+    .dash { color: var(--muted); font-size: 1rem; }
+
+    .note {
+      margin-top: 20px;
+      padding: 14px 18px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: var(--surface);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.7rem; color: var(--muted); line-height: 1.7;
+      animation: fadeUp .5s ease .2s both;
+    }
+    .note strong { color: var(--text); }
+
+    @keyframes fadeDown { from { opacity:0; transform:translateY(-16px); } to { opacity:1; transform:translateY(0); } }
+    @keyframes fadeUp   { from { opacity:0; transform:translateY(18px);  } to { opacity:1; transform:translateY(0); } }
+  </style>
+</head>
+<body>
+<div class="container">
+
+  <header>
+    <div class="app-tag">🧪 <em>Cypress</em> &nbsp;vs&nbsp; <span>Playwright</span> &nbsp;·&nbsp; comparatif E2E</div>
+    <h1>Le verdict</h1>
+    <p>// quel framework choisir selon ton contexte</p>
+  </header>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Contexte</th>
+          <th><span class="th-badge badge-cypress">Cypress</span></th>
+          <th><span class="th-badge badge-playwright">Playwright</span></th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Prise en main débutant</td>
+          <td><span class="pill pill-green"><span class="dot dot-green"></span>Très facile</span></td>
+          <td><span class="pill pill-amber"><span class="dot dot-amber"></span>Courbe plus raide</span></td>
+        </tr>
+        <tr>
+          <td>Interface interactive (open)</td>
+          <td><span class="pill pill-green"><span class="dot dot-green"></span>Excellente</span></td>
+          <td><span class="pill pill-amber"><span class="dot dot-amber"></span>Correcte</span></td>
+        </tr>
+        <tr>
+          <td>Support Safari / WebKit</td>
+          <td><span class="pill pill-amber"><span class="dot dot-amber"></span>Non</span></td>
+          <td><span class="pill pill-green"><span class="dot dot-green"></span>Natif</span></td>
+        </tr>
+        <tr>
+          <td>Parallélisme</td>
+          <td><span class="pill pill-amber"><span class="dot dot-amber"></span>Payant (Cloud)</span></td>
+          <td><span class="pill pill-green"><span class="dot dot-green"></span>Natif gratuit</span></td>
+        </tr>
+        <tr>
+          <td>Multi-onglets / fenêtres</td>
+          <td><span class="pill pill-amber"><span class="dot dot-amber"></span>Non</span></td>
+          <td><span class="pill pill-green"><span class="dot dot-green"></span>Natif</span></td>
+        </tr>
+        <tr>
+          <td>Rapport HTML intégré</td>
+          <td><span class="pill pill-amber"><span class="dot dot-amber"></span>Via Mochawesome</span></td>
+          <td><span class="pill pill-green"><span class="dot dot-green"></span>Natif</span></td>
+        </tr>
+        <tr>
+          <td>Couverture de code</td>
+          <td><span class="pill pill-blue"><span class="dot dot-blue"></span>Via plugin</span></td>
+          <td><span class="pill pill-blue"><span class="dot dot-blue"></span>Via plugin</span></td>
+        </tr>
+        <tr>
+          <td>iFrames</td>
+          <td><span class="pill pill-amber"><span class="dot dot-amber"></span>Limité</span></td>
+          <td><span class="pill pill-green"><span class="dot dot-green"></span>Natif</span></td>
+        </tr>
+        <tr>
+          <td>Debug visuel</td>
+          <td><span class="pill pill-green"><span class="dot dot-green"></span>Time travel</span></td>
+          <td><span class="pill pill-blue"><span class="dot dot-blue"></span>Trace viewer</span></td>
+        </tr>
+        <tr>
+          <td>Communauté / ressources</td>
+          <td><span class="pill pill-green"><span class="dot dot-green"></span>Très large</span></td>
+          <td><span class="pill pill-blue"><span class="dot dot-blue"></span>En forte croissance</span></td>
+        </tr>
+        <tr>
+          <td>Langages supportés</td>
+          <td><span class="pill pill-gray"><span class="dot dot-gray"></span>JS / TS</span></td>
+          <td><span class="pill pill-green"><span class="dot dot-green"></span>JS, TS, Python, Java, C#</span></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="note">
+    💡 Pour <strong>enseigner les bases des tests E2E</strong>, Cypress reste le meilleur point d'entrée — son interface interactive est imbattable pour les débutants.
+    Playwright prend le dessus dès qu'on parle de <strong>CI/CD, multi-navigateur, parallélisme ou projets avancés</strong>.
+  </div>
+
+</div>
+</body>
+</html>
