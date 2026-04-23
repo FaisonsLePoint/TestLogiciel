@@ -11,7 +11,10 @@
     "preview": "vite preview",
     "cypress:info": "cypress info",
     "cypress:open": "cypress open --browser=chrome",
-    "cypress:run": "cypress run"
+    "cypress:run": "cypress run",
+    "cypress:cov": "npx nyc report",
+    "cypress:cov:report": "npx nyc report --reporter=text-summary"
+
   },
   "dependencies": {
     "axios": "^1.7.9",
@@ -21,6 +24,7 @@
     "react-router-dom": "^7.1.5"
   },
   "devDependencies": {
+    "@cypress/code-coverage": "^4.0.3",
     "@eslint/js": "^9.19.0",
     "@types/react": "^19.0.8",
     "@types/react-dom": "^19.0.3",
