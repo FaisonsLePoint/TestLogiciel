@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test'
+import { test, expect } from '../fixtures'
 
 test.describe('LOGIN LOGOUT', () => {
 
@@ -6,9 +6,16 @@ test.describe('LOGIN LOGOUT', () => {
         await page.goto('/')
     })
 
-    test('Should display admin dashboard /=> good credentials', async ({page}) => {
-        await page.locator('[data-cy=admin-link]').click()
-        await expect(page.locator('[data-cy=admin-login]')).toBeVisible()
+    test('Should display admin dashboard /=> good credentials', async ({page, selector}) => {
+        // await page.locator('[data-cy=admin-link]').click()
+        // await expect(page.locator('[data-cy=admin-login]')).toBeVisible()
+
+        // await selector(page, 'admin-link').click()
+        // await expect(selector(page, 'admin-login')).toBeVisible()
+
+        await selector('admin-link').click()
+        await expect(selector('admin-login')).toBeVisible()
+
 
         await page.locator('[data-cy=email]').clear()
         await page.locator('[data-cy=email]').fill('admin@admin.admin')
