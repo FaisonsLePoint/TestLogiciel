@@ -19,7 +19,9 @@
     "cypress:full": "rm -rf cypress/reports && npm run cypress:run && npm run cypress:merge && npm run cypress:report",
     "play:run": "playwright test",
     "play:open": "playwright test --ui",
-    "play:report": "playwright show-report playwright/reports"
+    "play:report": "playwright show-report playwright/reports",
+    "play:cov": "nyc report",
+    "play:cov:report": "nyc report --reporter=html --reporter=text-summary"
   },
   "dependencies": {
     "axios": "^1.7.9",

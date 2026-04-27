@@ -10,7 +10,7 @@ export default defineConfig({
     react(),
     istanbul({
       include: 'src/*',
-      exclude: ['node_modules', 'test/'],
+      exclude: ['node_modules', 'test/', 'playwright/'],
       extension: [ '.js', 'jsx' ],
     }),
   ],
